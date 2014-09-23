@@ -13,12 +13,12 @@ from scipy.optimize import leastsq
 import matplotlib.pyplot as pl
 import matplotlib.transforms as mtran
 
-import lm
+#import lm
 from utilities import \
      scoreatpercentile, indexnear, Bunch, between,  Gaussian
 from convolve import convolve_psf
-from spec import plotlines
-from plot import puttext
+#from spec import plotlines
+#from plot import puttext
 from io import readtxt
 from spline import InterpCubicSpline
 
