@@ -241,4 +241,3 @@ def plot_NM(tbinedges,rbinedges, thingstoplot,thingsnames,n,m,vmin=None, vmax=No
         ax.set_title(name,fontsize='large')
         ax.set_xlabel(r'$r_{perp}$ (Mpc/h)')
         ax.set_ylabel(r'$r_{LOS}$ (Mpc/h)')
-

@@ -31,11 +31,13 @@ class RanDist(object):
         sampling of x values is appropriate for distributions like
         inverse power laws, for example.
         """
+
+
         # normalise such that area under pdf is 1.
         self.pdf = dist / np.trapz(dist, x=x)
         # cumulative probability distribution
         self.cdf = dist.cumsum()
-        self.cdf /= self.cdf[-1]
+        self.cdf = self.cdf / float(self.cdf[-1])
         self.x = x
 
     def random(self, N=1, seed=None):

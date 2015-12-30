@@ -4,6 +4,10 @@ import numpy as np
 
 """Module for utils treating catalogs"""
 
+__all__ = ['compare_z', 'group_z','give_dv','give_dz','poisson_err','find_edges',
+      'is_local_minima','is_local_maxima','associate_redshifts','get_dv_closest_z',
+      'clean_array','get_original_indices']
+
 def compare_z(z1,z2,dv):
     """Return true if the difference between z1 and z2 is within dv at
     the mean redshift. Otherwise return False. dv has to be much
