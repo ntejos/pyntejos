@@ -4,7 +4,7 @@ from setuptools import setup
 setup(
     name="pyntejos",
     version="0.1.0",
-    description="Python software for N. Tejos et al.",
+    description="Python software by N. Tejos et al.",
     author="N. Tejos",
     license="BSD",
     author_email="ntejos@gmail.com",
