@@ -1,7 +1,7 @@
-"""Astronomical coordinate functions mostly from Neil Chrighton
-(slightly different than barak versions though).
-
+"""Astronomical coordinate functions (some of them from Neil
+Chrighton's barak, slightly modified).
 """
+
 import re,pdb
 import numpy as np
 from numpy import arccos,sin,cos
