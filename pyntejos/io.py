@@ -169,5 +169,70 @@ def read_Danforth14(filename,keywords=['RA_TARG','DEC_TARG']):
     return data
 
 
+def write_DS9reg(x, y, filename=None, coord='IMAGE', ptype='x', size=20,
+                 c='green', tag='all', width=1, text=None):
+    """Write a region file for ds9 for a  list of coordinates.
+    Taken from Neil Crighton's barak.io
+
+    Parameters
+    ----------
+    x, y : arrays of floats, shape (N,)
+        The coordinates. These may be image or WCS.
+    filename : str, optional
+        A filename to write to.
+    coord : str  (`IMAGE` or `J2000`)
+        The coordinate type: `IMAGE` (pixel coordinates) or
+        `J2000` (celestial coordinates).
+    ptype : str or np.array of shape (N,)
+        DS9 point type (e.g. `circle`, `box`,  `diamond`,  `cross`, `x`, `arrow`,
+        `boxcircle`)
+    size : int or np.array of shape (N,)
+        DS9 point size.
+    c : str or np.array of shape (N,)
+        point colour: `cyan` `blue` `magenta` `red` `green` `yellow` `white`
+        `black`}.
+    tag : str or np.array of shape (N,)
+        DS9 tag. e.g. 'all'
+    width : int or np.array of shape (N,)
+        DS9 width
+    text : str or np.array of shape (N,)
+        Text
+    """
+    header = ['global font="helvetica 10 normal" select=1 highlite=1 '
+               'edit=0 move=1 delete=1 include=1 fixed=0 source\n']
+    header.append(coord + '\n')
+
+    x = np.array(x)
+    y = np.array(y)
+    if isinstance(ptype, basestring):
+        ptype = [ptype] * len(x)
+    if isinstance(size, int):
+        size = [size] * len(x)
+    if isinstance(width, int):
+        width = [width] * len(x)
+    if isinstance(text, basestring):
+        text = [text] * len(x)
+    elif text is None:
+        text = list(range(len(x)))
+    if isinstance(tag, basestring):
+        tag = [tag] * len(x)
+    if isinstance(c, basestring):
+        c = [c] * len(x)
+    
+    
+    regions = []
+    # fmt = ('point(%12.8f,%12.8f) # \
+    # point=%s %s width=%s text={%s} color=%s tag={%s}\n')
+    for i in xrange(len(x)):
+        s = 'point({:.8f},{:.8f}) # point={} {} width={} text={{{}}} color={} tag={}\n'\
+                .format(x[i], y[i], ptype[i], size[i], width[i], text[i], c[i], tag[i])
+        regions.append(s)
+
+    if filename is not None:
+        fh = open(filename,'w')
+        fh.writelines(header + regions)
+        fh.close()
+    return header, regions
+
 #def read_ascii(filename,names=None,):
 #    """Read ascii file table"""
