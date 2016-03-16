@@ -18,7 +18,7 @@ def give_name(ra,dec):
     name = 'J{}{}'.format(ra_s,dec_s)
     return name
 
-def unify_cluster_catalog_redmapper(catalog, dataset, cosmo):
+def unify_cluster_catalog_redmapper(catalog, cosmo):
     """For a given catalog of redMaPPer clusters, it unifies its add_columns
     and column names (ra, dec, redshift, richness, mass, etc) for 
     general analysis. 
@@ -27,8 +27,6 @@ def unify_cluster_catalog_redmapper(catalog, dataset, cosmo):
     ----------
     catalog : Table
         The redmapper catalog as an astropy Table object
-    dataset : str
-        Choose between: `sdss_dr8` or `des_sva1`
     cosmo : Cosmology object
         Cosmology from astropy.cosmology
     Returns
@@ -49,7 +47,6 @@ def unify_cluster_catalog_redmapper(catalog, dataset, cosmo):
     else:
         name = catalog['NAME']
     clusters['NAME_ORIG'] = name
-    clusters['dataset'] = dataset
     
     #Unify ID, add column with original indices for redmapper
     objid = np.array([int(i+1) for i in range(len(catalog))])
