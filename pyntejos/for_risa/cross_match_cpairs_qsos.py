@@ -59,7 +59,7 @@ if dataset == 'unobserved':
             qsos_aux = unify_qso_catalog_xmq(qsos_aux)
         elif q_d == 'uvqs':
             # filename = '/media/ntejos/disk1/catalogs/UV_QSOs/hlsp_uvqs_multi_multi_all_multi_v1_redshifts.fits'
-            filename = './data/hlsp_uvqs_multi_multi_all_multi_v1_redshifts.fits')
+            filename = './data/hlsp_uvqs_multi_multi_all_multi_v1_redshifts.fits'
             qsos_aux = fits.getdata(filename)   
             qsos_aux = unify_qso_catalog_uvqs(qsos_aux)
         qsos_aux['dataset'] = q_d  # add origin dataset as column
