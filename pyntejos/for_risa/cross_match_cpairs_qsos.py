@@ -6,17 +6,20 @@ from astropy.cosmology import Planck13 as cosmo
 from pyntejos.utils import group_z, give_dz
 import pyntejos.coord as coord
 from cross_match_cpairs_qsos_utils import *    
-
+import sys
 """This script is to cross-match QSOs with cluster-pairs, and find the
 best QSO targets for HST based on a given merit. - Nicolas Tejos 2016
 
 """
 
 #Global parameters are read from configuration file
-from cross_match_cpairs_qsos_config import params 
+from run_all_config import params 
+
+# get the right dataset
+redmapper_dataset = sys.argv[1]
 
 #Read QSO catalog
-dataset = params['dataset']
+dataset = params['qso_dataset']
 if dataset == 'gabor':
     qsos = '/media/ntejos/disk1/catalogs/UV_QSOs/cluster_fuv19_Gabor.fits'
     qsos = fits.getdata(qsos)
@@ -113,7 +116,7 @@ qsos['id'] = np.arange(len(qsos))+1
 
 #Read cluster-pair catalog; will read from both SDSS and DES
 # cl_datasets = ['sdss_dr8','des_sva1']
-cl_datasets = ['des_yr1']
+cl_datasets = [redmapper_dataset]
 cpairs = Table()
 for cl_d in cl_datasets:
     cpairs_aux = fits.getdata('cpairs_richmin{}_l{}_{}.fits'.format(int(params['richmin']),int(params['max_tsep']), cl_d))
@@ -272,4 +275,4 @@ ascii.write(qsos, output='qsos.txt',include_names=use_cols)
 
 # figures
 # make_Nmin_figure()
-make_orbits_plot(qsos, params)
+# make_orbits_plot(qsos, params)

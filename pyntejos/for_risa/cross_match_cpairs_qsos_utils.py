@@ -441,7 +441,7 @@ def make_Nmin_figure():
     fig.savefig('Nmin.png',dpi=300)
     pl.show()
 
-def make_orbits_plot(qsos, params):
+def make_orbits_plot(qsos, dataset):
     fig = pl.figure(figsize=(6,6))
     ax = fig.add_subplot(111)
     
@@ -461,7 +461,7 @@ def make_orbits_plot(qsos, params):
     ax.set_xlim(0,xmax)
     if params['dataset']=='lehner':
         ax.set_xlim(0,250)
-    fig.savefig('Norb_{}.png'.format(params['dataset']),dpi=300)
+    fig.savefig('Norb_{}.png'.format(dataset),dpi=300)
     pl.show()
     
     

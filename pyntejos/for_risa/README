@@ -1,17 +1,10 @@
 These scripts are intended to cross-match cluster pairs with known UV
 bright QSOs for potential observations with HST. - Nicolas Tejos
 
-Steps:
+From terminal type:
+> python run_all.py redmapper_catalog short_name
 
-# We need to create the cluster-pair catalog first
-1.  Open create_cpair_catalog_config.py and point to the right
-    redmapper fits table accordingly.
-2. From terminal run:
-    > python create_cpair_catalog.py
-
-# Now we can do cross-match between cluster pairs and qsos
-3. From terminal run:
-    > python cross_match_cpairs_qsos.py
-
-# Examine the results
-4. Open the html table written in current working directory
+Where redmapper_catalog points to the redmapper fits table file and
+short_name should be a nickname describing the catalog (e.g.
+sdss_dr8). The final products will be a html and latex tables that can
+be explored.
