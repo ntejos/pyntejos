@@ -1,11 +1,57 @@
 import numpy as np
 from astropy.table import Table, Column, Row, vstack
 import astropy.units as u
-from pyntejos.coord import dec2s
+from astropy.io import fits
+from pyntejos.coord import dec2s, s2dec, match_radec
 
 """This module is meant to provide catalog utilities,
 for instance, unifying different public catalogs
 """
+
+def add_radec_deg_columns(table, ra_h=['RA'], dec_s=['DEC']):
+    """For a given table input, it adds extra columns named
+
+    Parameters
+    ----------
+    table : Table
+        Input catalog table, has to contain columns for
+        hourangle/sexagesimal coordinates (ra_h, dec_s), 
+        respectively.
+    ra_h : list of str
+        Column names to look for RA in sexagesimal notation
+    dec_s : list of str
+        Column names to look for DEC in sexagesimal notation
+
+    Returns
+    -------
+    table_out : Table
+        Same as original input table but with extra two columns
+        ra_d and dec_d, with coordinates in decimal notation.
+    """
+
+    ra_aux = None
+    dec_aux = None
+    for rah in ra_h:
+        try:
+            ra_aux = table[rah]
+            break
+        except KeyError:
+            pass
+    for decs in dec_s:
+        try:
+            dec_aux = table[decs]
+            break
+        except KeyError:
+            pass
+    if (ra_aux is None) or (dec_aux is None):
+        raise ValueError('Input table does not have ra_h, or dec_s columns specified; try:\
+                        specifying them using the optional arguments: ra_h and dec_s.')
+    ra_d = [s2dec(ra_ii, dec_ii)[0] for ra_ii, dec_ii in zip(ra_aux, dec_aux)]
+    dec_d = [s2dec(ra_ii, dec_ii)[1] for ra_ii, dec_ii in zip(ra_aux, dec_aux)]
+    new_table = table.copy()
+    new_table['ra_d'] = ra_d
+    new_table['dec_d'] = dec_d
+    return new_table
 
 def give_name(ra,dec):
     """Returns a numpy array having a string with name of the target based
@@ -166,8 +212,6 @@ def unify_cluster_catalog_GMBCG(catalog, cosmo):
 
     return clusters
 
-
-
 def unify_qso_catalog_xmq(qsos):
     """Unifies the name of columns that are relevant for most analyses"""
     qsos = Table(qsos)
@@ -180,7 +224,6 @@ def unify_qso_catalog_xmq(qsos):
     name = [give_name(ra,dec) for ra,dec in zip(qsos['ra'],qsos['dec'])]
     qsos['name'] = name
     return qsos
-
 
 def unify_qso_catalog_legacy(qsos):
     """Unifies the name of columns that are relevant for most analyses"""
@@ -223,3 +266,28 @@ def unify_qso_catalog_uvqs(qsos):
     qsos['name'] = name
 
     return qsos
+
+def get_mag_fuv(ra,dec,tol=2.): 
+    """Gets the FUV mag from the closest target within 2 arcseconds
+    (default) cross-matching to a reference qso catalog     """
+
+    qso_ref = fits.getdata('/media/ntejos/disk1/catalogs/UV_QSOs/xmq_GALEX_cutz.fits')
+    #qso_ref = fits.getdata('/media/ntejos/disk1/catalogs/UV_QSOs/cluster_fuv19_Gabor.fits')
+    matches = match_radec(ra,dec,qso_ref['RA'],qso_ref['DEC'],tol=tol)
+    ind = matches['ind']
+    #mag_fuv = qso_ref['mag_fuv'][ind]
+    mag_fuv = qso_ref['FUV'][ind]
+    mag_fuv = np.where(ind==-1,-1,mag_fuv)
+    return mag_fuv
+
+def get_redshift_qso(ra,dec,tol=2.): 
+    """Gets the redshift from the closest QSO within 2 arcseconds
+    (default) by cross-matching to a reference qso catalog     """
+
+    qso_ref = fits.getdata('/media/ntejos/disk1/catalogs/UV_QSOs/xmq_GALEX_cutz.fits')
+    # qso_ref = fits.getdata('/media/ntejos/disk1/catalogs/UV_QSOs/cluster_fuv19_Gabor.fits')
+    matches = match_radec(ra,dec,qso_ref['RA'],qso_ref['DEC'],tol=tol)
+    ind = matches['ind']
+    redshift = qso_ref['Z'][ind]
+    redshift = np.where(ind==-1,-1,redshift)
+    return redshift

@@ -75,7 +75,7 @@ for i in range(L+1):
         # yc = pos[ic][1]       
         # zc = pos[ic][2]
 
-        for k in range(1,eta+1):
+        for k in range(1, eta+1):
             xg = np.random.uniform(xc - Ri, xc + Ri, 1)
             # ylen = np.sqrt(Ri**2 -  )   
             

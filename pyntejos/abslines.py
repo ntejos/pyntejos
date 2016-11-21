@@ -18,7 +18,7 @@ atomdat = readatom('/home/ntejos/software/vpfit10/atom.dat')
 
 
 def get_tau0_peak(wa0,fosc,logN,b):
-    """Get the value of the optical depth at the lince center,
+    """Get the value of the optical depth at the line center,
     tau0. From Draine 2011 (see Chapter 9). It neglects estimulated
     emission which is fine for IGM or ISM except for radio-frecuency
     transitions.

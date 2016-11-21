@@ -1,8 +1,9 @@
 from astropy.cosmology import WMAP7 as cosmo
 from astropy.constants import c as C
 import numpy as np
+from linetools import utils as ltu
 
-"""Module for utils treating catalogs"""
+"""Module for utils"""
 
 __all__ = ['compare_z', 'group_z','give_dv','give_dz','poisson_err','find_edges',
       'is_local_minima','is_local_maxima','associate_redshifts','get_dv_closest_z',
@@ -58,30 +59,12 @@ def group_z(z,dv=1000):
 def give_dv(z,zmean,rel=True):
     """Gives velocity difference in km/s between z and zmean, using
     relativistic approximation for a locally flat space-time."""
-    z = np.array(z)
-    zmean = np.array(zmean)
-    
-    if rel:
-        dv = ((1+z)**2-(1+zmean)**2) / ((1+z)**2 + (1+zmean)**2) * C.to('km/s').value 
-    else:
-        dv = (z - zmean) / (1. + zmean) * C.to('km/s').value
-    
-    return dv
+    return ltu.give_dv(z, zmean, rel=rel)
 
 def give_dz(dv,zmean,rel=True):
     """Gives redshift difference of dv in km/s at the redshift zmean,
     using relativistic approximation for a locally flat space-time."""
-    
-    dv = np.array(dv) 
-    zmean = np.array(zmean)
-    
-    if rel:
-        beta = dv/C.to('km/s').value
-        aux = np.sqrt((1.+beta)/(1.-beta))
-        dz = (1. + zmean) * (aux - 1.)
-    else:
-        dz = dv * (1. + zmean) / C.to('km/s').value
-    return dz
+    return ltu.give_dz(dv, zmean, rel=rel)
 
 
 def poisson_err(n):
@@ -235,3 +218,19 @@ def get_original_indices(original,new):
     indices = inds_orig_sorted[indices_aux]
 
     return indices
+
+
+def get_today_str():
+    """Returns a string representation of current day
+    format YYYY-MM-DD"""
+    import time
+    t = time.gmtime()
+    year = str(t.tm_year)
+    month = str(t.tm_mon)
+    day = str(t.tm_mday)
+    if len(month) == 1:
+        month = '0' + month
+    if len(day) == 1:
+        day = '0' + day
+    s = '{}-{}-{}'.format(year, month, day)
+    return s
