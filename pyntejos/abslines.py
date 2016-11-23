@@ -7,11 +7,10 @@ from pyntejos.utils import find_edges,clean_array
 from astropy import constants as const
 import astropy.units as u
 from barak.absorb import readatom
+from linetools.analysis import absline as ltaa
 
 #Constant
-e2_me_c = 1.497e-2/np.sqrt(np.pi) # (in cm^2/s) e2 / (m_e * c)  from Draine (eq. 9.8 and 9.9)
-#this should be equal to:
-e2_me_c = ((const.e.esu)**2/(const.c.to('cm/s')*const.m_e.to('g'))).value
+e2_me_c = ((const.e.esu)**2/(const.c.to('cm/s')*const.m_e.to('g'))).value # from Draine (eq. 9.8 and 9.9)
 
 #read atomic data
 atomdat = readatom('/home/ntejos/software/vpfit10/atom.dat')
@@ -34,20 +33,10 @@ def get_tau0_peak(wa0,fosc,logN,b):
     -------
     tau0:  optical depth at the line center
     """
-    wa0 = np.array(wa0)
-    fosc = np.array(fosc)
-    b = np.array(b)
-    logN = np.array(logN)
-
-    #convert units
-    b = b * 1e5 # in cm/s
-    wa0 = wa0 * 1e-8 # in cm
-    N = 10**logN # in cm^2
-    
-    #tau0
-    tau0 = np.sqrt(np.pi) * e2_me_c * N * fosc * wa0  / b
-    return tau0
-
+    # give units
+    wa0 = wa0 * u.AA
+    b = b * u.km/u.s
+    return ltaa.get_tau0(wa0, fosc, logN, b)
 
 def logN_b_to_Wr(logN,b,wa0,fosc,gamma):
     """I will use the approximation given by Draine book (eq. 9.27),
@@ -67,28 +56,14 @@ def logN_b_to_Wr(logN,b,wa0,fosc,gamma):
     Wr:  rest-frame equivalent width in A
     
     """
-    wa0 = np.array(wa0)
-    fosc = np.array(fosc)
-    b = np.array(b)
-    logN = np.array(logN)
-    gamma = np.array(gamma)
+    # give units
+    wa0 = wa0 * u.AA
+    N = 10**logN * (1/u.cm*u.cm)
+    b = b * u.km/u.s
+    gamma = gamma * (1/u.s)
 
-    #first calculate tau0
-    tau0 = get_tau0_peak(wa0,fosc,logN,b)
-        
-    #convert units
-    b_cm_s = b * 1e5 # in cm/s
-    wa0_cm = wa0 * 1e-8 # in cm
-    N_cm2  = 10**logN # in cm^2
-    c_cm_s = C.to('cm/s').value #in cm/s
-    
-    if tau0 <= 1.25393:
-        W = np.sqrt(np.pi) * (b_cm_s/c_cm_s) * tau0 / (1 + tau0/(2*np.sqrt(2))) #dimensionless
-    else:
-        W = (2*b_cm_s/c_cm_s)**2 * np.log(tau0/np.log(2)) \
-            + (b_cm_s/c_cm_s)*(wa0_cm * gamma/c_cm_s) * (tau0-1.25393)/np.sqrt(np.pi)
-        W = np.sqrt(W) #dimensionless
-    return W * wa0  # in angstroms
+    # call linetools function
+    return ltaa.Wr_from_N_b(N, b, wa0, fosc, gamma)
 
 
 def logN_b_to_Wr_ion(logN,b,ion='HI',wa0=1215.67):

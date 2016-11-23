@@ -2,6 +2,8 @@ from astropy.cosmology import WMAP7 as cosmo
 from astropy.constants import c as C
 import numpy as np
 from linetools import utils as ltu
+from linetools.isgm.abscomponent import AbsComponent
+import json
 
 """Module for utils"""
 
@@ -16,7 +18,7 @@ def compare_z(z1,z2,dv):
     relativity."""
     z1 = np.array(z1)
     z2 = np.array(z2)
-    dc = np.array(dv)
+    dv = np.array(dv)
 
     dz = np.fabs(z1 - z2)
     z  = np.mean([z1,z2])
@@ -234,3 +236,36 @@ def get_today_str():
         day = '0' + day
     s = '{}-{}-{}'.format(year, month, day)
     return s
+
+def complist_from_igmgjson(igmguesses_json):
+    """Creates a list of AbsComponenbts from a igmguesses_json file
+
+    Parameters
+    ----------
+    igmguesses_json : str
+        Name of the json file genereted by IGMGUESSES
+
+    Returns
+    -------
+    comp_list : list of AbsComponents
+        A list of AbsComponents
+
+    """
+    # Read the JSON file
+    with open(igmguesses_json) as data_file:
+        igmg_dict = json.load(data_file)
+    # Components
+    comp_list = []
+    for ii, key in enumerate(igmg_dict['cmps'].keys()):
+        comp_dict = igmg_dict['cmps'][key]
+        comp_dict['flag_N'] = 1
+        comp_dict['logN'] = comp_dict['Nfit']
+        comp_dict['sig_logN'] = -1
+        comp = AbsComponent.from_dict(comp_dict, chk_sep=False, chk_data=False, chk_vel=True)
+        # add extra attributes manually
+        comp.attrib['b'] = comp_dict['bfit']
+        comp.attrib['sig_b'] = -1
+        comp.attrib['reliability'] = comp_dict['Reliability']
+        comp_list += [comp]
+    return comp_list
+
