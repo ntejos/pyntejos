@@ -8,6 +8,7 @@ from astropy import constants as const
 import astropy.units as u
 from barak.absorb import readatom
 from linetools.analysis import absline as ltaa
+from linetools.lists.linelist import LineList
 
 #Constant
 e2_me_c = ((const.e.esu)**2/(const.c.to('cm/s')*const.m_e.to('g'))).value # from Draine (eq. 9.8 and 9.9)
@@ -82,27 +83,17 @@ def logN_b_to_Wr_ion(logN,b,ion='HI',wa0=1215.67):
     -------
     Wr:  rest-frame equivalent width in A
     """
-    
-    logN = np.array(logN)
-    b    = np.array(b)
-    wa0  = np.array(wa0)   
 
-    #read atomic data
-    try:
-        atom_info = atomdat[ion]
-    except:
-        assert False,\
-            'The ion name provided does not match any of the ones in the current database.'
-    
-    #find the transition parameters by matching the closest wa0
-    atom_wa = np.array(atom_info['wa'])
-    ind = np.where(np.fabs(wa0-atom_wa)==np.min(np.fabs(wa0-atom_wa)))[0][0]
-    wa0   = atom_info[ind]['wa']  #redifine wa0
-    fosc  = atom_info[ind]['osc'] #oscillator strenght
-    gamma = atom_info[ind]['gam'] #Gamma parameter
-    
+    # add units
+    N = 10**logN * (1/(u.cm*u.cm))
+    b    = b * u.km/u.s
+    wa0  = wa0 * u.AA
+
+    # guess transition name
+    transition = '{} {:s}'.format(ion, wa0).split('.')[0]
+
     #find rest-frame equivalent width
-    Wr = logN_b_to_Wr(logN,b,wa0,fosc,gamma) #in Angstroms
+    Wr = ltaa.Wr_from_N_b_transition(N, b, transition)
     return Wr
 
 def compute_Wmin(wa,fl,er,sl=3.,R=20000,FWHM=10,wa0=1215.67,mask_Gal= True, fl_th = 0):
