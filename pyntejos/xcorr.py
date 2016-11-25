@@ -3,7 +3,7 @@ import time
 import numpy as np
 import pylab as pl
 
-def auto_pairs_rt(x, y, z, rbinedges, tbinedges,wrapped=True):
+def auto_pairs_rt(x, y, z, rbinedges, tbinedges, wrapped=True):
     """ Find the number of pairs in 2d and 3d for galaxies with
     coordinate x, y, z.
 

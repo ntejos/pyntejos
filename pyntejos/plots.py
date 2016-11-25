@@ -1,8 +1,11 @@
 import matplotlib.pyplot as plt
 from astropy import units as u
+from astropy.constants import c
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from linetools.isgm.abscomponent import AbsComponent
 from linetools.analysis import voigt as lav
+from linetools import utils as ltu
+from pyntejos.utils import get_components_at_z
 
 def common_labels(fig, xlabel='',ylabel='',title='',fontsize=20,xlabelpad=None,ylabelpad=None):
     """Plots only labels in a parent figure. Special for subplots with
@@ -96,14 +99,7 @@ def plot_spectrum(ax, spec, complist=None, plot_res=True, fwhm=3):
 
     if plot_model:
         # create a model
-        gdlin = []
-        for comp in complist:
-            for ii, line in enumerate(comp._abslines):
-                wvobs = (1 + line.attrib['z']) * line.wrest
-                if (wvobs > spec.wvmin) & (wvobs <spec.wvmax):
-                    line.attrib['N'] = 10.**line.attrib['logN'] / u.cm**2
-                    gdlin.append(line)
-        model = lav.voigt_from_abslines(spec.wavelength, gdlin, fwhm=fwhm)
+        model = lav.voigt_from_components(spec.wavelength, complist, fwhm=fwhm)
 
 
     if spec.co_is_set:
@@ -117,9 +113,76 @@ def plot_spectrum(ax, spec, complist=None, plot_res=True, fwhm=3):
             residual = spec.flux - model.flux
             ax.plot(spec.wavelength, residual, '.', color='grey', ms=2)
             ax.plot(spec.wavelength, -1*spec.sig, '-', drawstyle='steps-mid', color='g', lw=0.5)
-            
 
 
+def plot_vel(ax, spec, wrest, z, dvlims, model_all=None, model_z=None, complist=None, plot_res=True, fwhm=None):
+    """ Velocity plot of spectrum in a given axis
+    Parameters
+    ----------
+    ax : axis
+        matplotlib axis
+    spec: XSpectrum1D
+        Spectrum to plot
+    wrest : Quantity
+        Rest-frame wavelength where zero velocity is defined
+        for given redshift z.
+    z : float
+        Redshift to where define zero velocity
+    model : XSpectrum1D, optional
+        A model to overplot in spectrum
+    complist : list of AbsComponents, optional
+        If given, and model is None, a model is internally computed
+    plot_res : bool, optional
+        Whether to plot residuals, only works if components
+        is not None.
+    fwhm : int, optional
+        Gaussian FWHM in pixels
 
+    Returns
+    -------
+    ax : axis
+        Axis with the plot.
+    """
+    # checks
+    if not isinstance(spec, XSpectrum1D):
+        raise IOError('Input spec must be XSpectrum1D object.')
+    if model_all is not None:
+        plot_model = True
+    else:
+        if complist is not None:
+            if not isinstance(complist[0], AbsComponent):
+                raise IOError('components must be a list of AbsComponent objects.')
+            plot_model = True
+            # create a model from complist
+            model_all = lav.voigt_from_components(spec.wavelength, complist, fwhm=fwhm)
+            if model_z is None:
+                import pdb; pdb.set_trace()
+                comps_z = get_components_at_z(complist, z, dvlims)
+                model_z = lav.voigt_from_components(spec.wavelength, comps_z, fwhm=fwhm)
+        else:
+            plot_model = False
+
+    velo = ltu.give_dv(spec.wavelength/wrest -1. , z)
+    if spec.co_is_set:
+        spec.normalize(co=spec.co)
+    ax.plot(velo, spec.flux, '-', drawstyle='steps-mid', color='k')
+    if spec.sig_is_set:
+        ax.plot(velo, spec.sig, '-', drawstyle='steps-mid', color='g', lw=0.5)
+    if plot_model:
+        ax.plot(velo, model_all.flux, '-', color='r', lw=0.5)
+        # plot only good components now
+        ax.plot(velo, model_z.flux, '--', color='b', lw=1.5)
+
+        if plot_res:
+            residual = spec.flux - model_all.flux
+            ax.plot(velo, residual, '.', color='grey', ms=2)
+            ax.plot(velo, -1*spec.sig, '-', drawstyle='steps-mid', color='g', lw=0.5)
+
+    # Zero velocity line
+    ax.plot([0., 0.], [-1e9, 1e9], ':', color='gray')
+    # Unity flux level line
+    ax.plot([-1e9, 1e9], [1, 1], ':', color='b', lw=0.5)
+    # Zero flux level line
+    ax.plot([-1e9, 1e9], [0, 0], '--', color='k', lw=1)
 
 
