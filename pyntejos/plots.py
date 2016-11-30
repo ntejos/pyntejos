@@ -1,11 +1,20 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from astropy import units as u
 from astropy.constants import c
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from linetools.isgm.abscomponent import AbsComponent
 from linetools.analysis import voigt as lav
 from linetools import utils as ltu
-from pyntejos.utils import get_components_at_z
+from pyntejos import utils as pntu
+
+# color style for spectra
+COLOR_FLUX = 'k'
+COLOR_SIG = 'g'
+COLOR_BLEND = '#CCCCCC'
+COLOR_RESIDUAL = 'grey'
+COLOR_MODEL = 'r'
+
 
 def common_labels(fig, xlabel='',ylabel='',title='',fontsize=20,xlabelpad=None,ylabelpad=None):
     """Plots only labels in a parent figure. Special for subplots with
@@ -101,82 +110,53 @@ def plot_spectrum(ax, spec, complist=None, plot_res=True, fwhm=3):
         # create a model
         model = lav.voigt_from_components(spec.wavelength, complist, fwhm=fwhm)
 
-
     if spec.co_is_set:
         spec.normalize(co=spec.co)
-    ax.plot(spec.wavelength, spec.flux, '-', drawstyle='steps-mid', color='k')
+    ax.plot(model.wavelength, spec.flux, '-', color=COLOR_FLUX, lw=1)
     if spec.sig_is_set:
-        ax.plot(spec.wavelength, spec.sig, '-', drawstyle='steps-mid', color='g', lw=0.5)
+        ax.plot(model.wavelength, spec.sig, '-', color=COLOR_SIG, lw=0.5)
     if plot_model:
-        ax.plot(model.wavelength, model.flux, '-', color='r', lw=0.5)
+        ax.plot(model.wavelength, model.flux, '-', color=COLOR_MODEL, lw=0.5)
         if plot_res:
             residual = spec.flux - model.flux
-            ax.plot(spec.wavelength, residual, '.', color='grey', ms=2)
-            ax.plot(spec.wavelength, -1*spec.sig, '-', drawstyle='steps-mid', color='g', lw=0.5)
+            ax.plot(spec.wavelength, residual, '.', color=COLOR_RESIDUAL, ms=2)
+            ax.plot(spec.wavelength, -1*spec.sig, '-', drawstyle='steps-mid', color=COLOR_SIG, lw=0.5)
 
 
-def plot_vel(ax, spec, wrest, z, dvlims, model_all=None, model_z=None, complist=None, plot_res=True, fwhm=None):
-    """ Velocity plot of spectrum in a given axis
-    Parameters
-    ----------
-    ax : axis
-        matplotlib axis
-    spec: XSpectrum1D
-        Spectrum to plot
-    wrest : Quantity
-        Rest-frame wavelength where zero velocity is defined
-        for given redshift z.
-    z : float
-        Redshift to where define zero velocity
-    model : XSpectrum1D, optional
-        A model to overplot in spectrum
-    complist : list of AbsComponents, optional
-        If given, and model is None, a model is internally computed
-    plot_res : bool, optional
-        Whether to plot residuals, only works if components
-        is not None.
-    fwhm : int, optional
-        Gaussian FWHM in pixels
+def plot_vel(ax, spec, iline, z, dvlims, complist=None, fwhm=3):
 
-    Returns
-    -------
-    ax : axis
-        Axis with the plot.
-    """
-    # checks
-    if not isinstance(spec, XSpectrum1D):
-        raise IOError('Input spec must be XSpectrum1D object.')
-    if model_all is not None:
-        plot_model = True
-    else:
-        if complist is not None:
-            if not isinstance(complist[0], AbsComponent):
-                raise IOError('components must be a list of AbsComponent objects.')
-            plot_model = True
-            # create a model from complist
-            model_all = lav.voigt_from_components(spec.wavelength, complist, fwhm=fwhm)
-            if model_z is None:
-                import pdb; pdb.set_trace()
-                comps_z = get_components_at_z(complist, z, dvlims)
-                model_z = lav.voigt_from_components(spec.wavelength, comps_z, fwhm=fwhm)
-        else:
-            plot_model = False
-
-    velo = ltu.give_dv(spec.wavelength/wrest -1. , z)
-    if spec.co_is_set:
+    # first normalize
+    if not spec.normed:
         spec.normalize(co=spec.co)
-    ax.plot(velo, spec.flux, '-', drawstyle='steps-mid', color='k')
-    if spec.sig_is_set:
-        ax.plot(velo, spec.sig, '-', drawstyle='steps-mid', color='g', lw=0.5)
-    if plot_model:
-        ax.plot(velo, model_all.flux, '-', color='r', lw=0.5)
-        # plot only good components now
-        ax.plot(velo, model_z.flux, '--', color='b', lw=1.5)
 
-        if plot_res:
-            residual = spec.flux - model_all.flux
-            ax.plot(velo, residual, '.', color='grey', ms=2)
-            ax.plot(velo, -1*spec.sig, '-', drawstyle='steps-mid', color='g', lw=0.5)
+    # first identify good components
+    good_comps = []
+    good_comps_aux = pntu.get_components_at_z(complist, z, dvlims)
+    for comp in good_comps_aux:
+        for aline in comp._abslines:
+            if aline.name == iline['name']:
+                good_comps += [comp]
+                break
+    # bad comps will be those unrelated to the given redshift/transition
+    bad_comps = []
+    for comp in complist:
+        if comp not in good_comps:
+            bad_comps += [comp]
+    # import pdb; pdb.set_trace()
+    # only good comps will have a model
+    if len(good_comps) > 0:
+        model_spec = lav.voigt_from_components(spec.wavelength, good_comps, fwhm=fwhm)
+    else:
+        model_spec = XSpectrum1D.from_tuple((spec.wavelength, np.ones(spec.npix)))
+
+    # main plot
+    velo = ltu.give_dv(spec.wavelength/iline['wrest'] - 1. , z)
+    ax.plot(velo, spec.flux, drawstyle='steps-mid', color=COLOR_FLUX)
+    plot_spec_complist(ax, velo, spec, bad_comps, min_ew = 0.3*u.AA, color=COLOR_BLEND, lw=2, drawstyle='steps-mid')
+    plot_spec_complist(ax, velo, model_spec, good_comps, min_ew = None, color=COLOR_MODEL, lw=1, ls='-')
+
+    if spec.sig_is_set:
+        ax.plot(velo, spec.sig, drawstyle='steps-mid', color=COLOR_SIG, lw=0.5)
 
     # Zero velocity line
     ax.plot([0., 0.], [-1e9, 1e9], ':', color='gray')
@@ -185,4 +165,31 @@ def plot_vel(ax, spec, wrest, z, dvlims, model_all=None, model_z=None, complist=
     # Zero flux level line
     ax.plot([-1e9, 1e9], [0, 0], '--', color='k', lw=1)
 
+
+def plot_spec_comp(ax, x, spec, comp, min_ew=None, label=False, **kwargs):
+    """Plots absorption lines within a component over a given spectrum model"""
+
+    for aline in comp._abslines:
+        # check min ew if given
+        if min_ew is not None:
+            try:
+                b = aline.attrib['b']
+            except:
+                b = 10 * u.km/u.s
+            Wr = aline.get_Wr_from_N_b(aline.attrib['N'], b)
+            if Wr < min_ew:
+                pass
+        wvlim = aline.limits.wvlim
+        cond = (spec.wavelength > wvlim[0]) & (spec.wavelength < wvlim[1])
+        ax.plot(x[cond], spec.flux[cond], **kwargs)
+        if label:
+            # import pdb; pdb.set_trace()
+            s = '{}z={:.3f}'.format(aline.name, aline.z)
+            x_s = np.mean(x[cond].value)
+            y_s = 0.5
+            ax.annotate(s, (x_s, y_s), rotation=90, fontsize=6)
+
+def plot_spec_complist(ax, x, spec, complist, min_ew=None, **kwargs):
+    for comp in complist:
+        plot_spec_comp(ax, x, spec, comp, min_ew=min_ew, **kwargs)
 
