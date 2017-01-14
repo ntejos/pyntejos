@@ -4,12 +4,8 @@ import numpy as np
 from linetools import utils as ltu
 from linetools.isgm.abscomponent import AbsComponent
 import json
-
+import io
 """Module for utils"""
-
-__all__ = ['compare_z', 'group_z', 'give_dv', 'give_dz', 'poisson_err', 'find_edges',
-           'is_local_minima', 'is_local_maxima', 'associate_redshifts', 'get_dv_closest_z',
-           'clean_array', 'get_original_indices']
 
 
 def compare_z(z1, z2, dv):
@@ -58,18 +54,6 @@ def group_z(z, dv=1000):
             ids[i] = ids_aux[cond]
 
     return ids.astype(int)
-
-
-def give_dv(z, zmean, rel=True):
-    """Gives velocity difference in km/s between z and zmean, using
-    relativistic approximation for a locally flat space-time."""
-    return ltu.give_dv(z, zmean, rel=rel)
-
-
-def give_dz(dv, zmean, rel=True):
-    """Gives redshift difference of dv in km/s at the redshift zmean,
-    using relativistic approximation for a locally flat space-time."""
-    return ltu.give_dz(dv, zmean, rel=rel)
 
 
 def poisson_err(n):
@@ -159,7 +143,7 @@ def associate_redshifts(z1, z2, dv):
 
     association = np.zeros(len(z1))
     for z in z2:
-        dv_aux = np.fabs(give_dv(z1, z))
+        dv_aux = np.fabs(ltu.dv_from_z(z1, z))
         association = np.where(dv_aux < dv, 1, association)
     return association
 
@@ -168,7 +152,7 @@ def get_dv_closest_z(z1, z2, give_ids=False):
     """Returns an array of same lenght as z1, with the velocity difference
     (in km/s) associates to the closest redshift in z2, at restframe
     given by z2. (Using relativistic approximation for flat-space time;
-    see give_dv() function)
+    see ltu.dv_from_z() function)
 
     If give_ids is True , it also returns the indices of z2 where the
     difference is minimum.
@@ -181,7 +165,7 @@ def get_dv_closest_z(z1, z2, give_ids=False):
     dv = []
     inds = []
     for z in z1:
-        dv_aux = give_dv(z, z2)
+        dv_aux = ltu.dv_from_z(z, z2)
         # find minimum difference
         cond = np.fabs(dv_aux) == np.min(np.fabs(dv_aux))
         ind = np.where(cond)[0][0]
@@ -268,7 +252,10 @@ def complist_from_igmgjson(igmguesses_json):
         comp_dict['logN'] = comp_dict['Nfit']
         comp_dict['sig_logN'] = -1
         # import pdb; pdb.set_trace()
-        comp = AbsComponent.from_dict(comp_dict, chk_sep=False, chk_data=False, chk_vel=False)
+        try:
+            comp = AbsComponent.from_dict(comp_dict, chk_sep=False, chk_data=False, chk_vel=False, linelist="ISM")
+        except:
+            comp = AbsComponent.from_dict(comp_dict, chk_sep=False, chk_data=False, chk_vel=False, linelist='H2')
         # add extra attributes manually
         comp.attrib['b'] = comp_dict['bfit']
         comp.attrib['sig_b'] = -1
@@ -277,13 +264,44 @@ def complist_from_igmgjson(igmguesses_json):
     return comp_list
 
 
-def get_components_at_z(complist, z, dvlims, edges=False):
-    """In a given list of components, it finds
-    the ones that are within dv from a given redshift
-    and returns a list of those components"""
-    good_complist = []
-    for comp in complist:
-        dv_comp = ltu.give_dv(comp.zcomp, z)
-        if (dv_comp >= dvlims[0]) and (dv_comp <= dvlims[1]):
-            good_complist += [comp]
-    return good_complist
+def from_complist_to_json(complist, specfile, fwhm, outfile='IGM_model.json'):
+        """ Write to a JSON file of the IGMGuesses format.
+
+        complist : list of AbsComponents
+            Ditto
+        specfile : str
+            Name of spectrum associated to these components
+        fwhm : int
+            FWHM of the spectrum
+        outfile : str, optional
+            Name of the output json file
+
+        """
+        import json, io
+        # Create dict of the components
+        out_dict = dict(cmps={},
+                        spec_file=specfile,
+                        fwhm=fwhm, bad_pixels=[])
+
+        for kk, comp in enumerate(complist):
+            key = comp.name
+            out_dict['cmps'][key] = comp.to_dict()
+            # import pdb; pdb.set_trace()
+            out_dict['cmps'][key]['zcomp'] = comp.zcomp
+            out_dict['cmps'][key]['zfit'] = comp.zcomp
+            out_dict['cmps'][key]['Nfit'] = comp.logN
+            out_dict['cmps'][key]['bfit'] = comp.attrib['b'].value
+            out_dict['cmps'][key]['wrest'] = comp._abslines[0].wrest.value
+            out_dict['cmps'][key]['vlim'] = list(comp.vlim.value)
+            out_dict['cmps'][key]['Reliability'] = str(comp.attrib['reliability'])
+            out_dict['cmps'][key]['Comment'] = str(comp.comment)
+            # out_dict['cmps'][key]['mask_abslines'] = comp.mask_abslines
+
+        # JSONify
+        gd_dict = ltu.jsonify(out_dict)
+
+        # Write file
+        # with io.open(outfile, 'w', encoding='utf-8') as f:
+        f = open(outfile, 'w')
+        f.write(unicode(json.dumps(gd_dict, sort_keys=True, indent=4, separators=(',', ': '))))
+        print('Wrote: {:s}'.format(outfile))

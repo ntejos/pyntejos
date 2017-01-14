@@ -6,6 +6,7 @@ from linetools.spectra.xspectrum1d import XSpectrum1D
 from linetools.isgm.abscomponent import AbsComponent
 from linetools.analysis import voigt as lav
 from linetools import utils as ltu
+from linetools.isgm import utils as ltiu
 from pyntejos import utils as pntu
 
 # color style for spectra
@@ -123,7 +124,7 @@ def plot_spectrum(ax, spec, complist=None, plot_res=True, fwhm=3):
             ax.plot(spec.wavelength, -1*spec.sig, '-', drawstyle='steps-mid', color=COLOR_SIG, lw=0.5)
 
 
-def plot_vel(ax, spec, iline, z, dvlims, complist=None, fwhm=3):
+def plot_vel(ax, spec, iline, z, dvlims, complist=None, fwhm=3, min_ew_blends=0.01*u.AA):
 
     # first normalize
     if not spec.normed:
@@ -131,7 +132,7 @@ def plot_vel(ax, spec, iline, z, dvlims, complist=None, fwhm=3):
 
     # first identify good components
     good_comps = []
-    good_comps_aux = pntu.get_components_at_z(complist, z, dvlims)
+    good_comps_aux = ltiu.get_components_at_z(complist, z, dvlims)
     for comp in good_comps_aux:
         for aline in comp._abslines:
             if aline.name == iline['name']:
@@ -142,17 +143,17 @@ def plot_vel(ax, spec, iline, z, dvlims, complist=None, fwhm=3):
     for comp in complist:
         if comp not in good_comps:
             bad_comps += [comp]
-    # import pdb; pdb.set_trace()
     # only good comps will have a model
     if len(good_comps) > 0:
+        # import pdb; pdb.set_trace()
         model_spec = lav.voigt_from_components(spec.wavelength, good_comps, fwhm=fwhm)
     else:
         model_spec = XSpectrum1D.from_tuple((spec.wavelength, np.ones(spec.npix)))
 
     # main plot
-    velo = ltu.give_dv(spec.wavelength/iline['wrest'] - 1. , z)
+    velo = ltu.dv_from_z(spec.wavelength/iline['wrest'] - 1. , z)
     ax.plot(velo, spec.flux, drawstyle='steps-mid', color=COLOR_FLUX)
-    plot_spec_complist(ax, velo, spec, bad_comps, min_ew = 0.3*u.AA, color=COLOR_BLEND, lw=2, drawstyle='steps-mid')
+    plot_spec_complist(ax, velo, spec, bad_comps, min_ew = min_ew_blends, color=COLOR_BLEND, lw=2, drawstyle='steps-mid')
     plot_spec_complist(ax, velo, model_spec, good_comps, min_ew = None, color=COLOR_MODEL, lw=1, ls='-')
 
     if spec.sig_is_set:
@@ -175,10 +176,13 @@ def plot_spec_comp(ax, x, spec, comp, min_ew=None, label=False, **kwargs):
             try:
                 b = aline.attrib['b']
             except:
+                # This attribute is better set from the outside.
+                import pdb; pdb.set_trace()
                 b = 10 * u.km/u.s
             Wr = aline.get_Wr_from_N_b(aline.attrib['N'], b)
             if Wr < min_ew:
-                pass
+                continue
+
         wvlim = aline.limits.wvlim
         cond = (spec.wavelength > wvlim[0]) & (spec.wavelength < wvlim[1])
         ax.plot(x[cond], spec.flux[cond], **kwargs)
