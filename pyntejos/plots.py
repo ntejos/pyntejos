@@ -167,7 +167,7 @@ def plot_vel(ax, spec, iline, z, dvlims, complist=None, fwhm=3, min_ew_blends=0.
     ax.plot([-1e9, 1e9], [0, 0], '--', color='k', lw=1)
 
 
-def plot_spec_comp(ax, x, spec, comp, min_ew=None, label=False, **kwargs):
+def plot_spec_comp(ax, x, spec, comp, min_ew=None, label=False, mask_x=None, **kwargs):
     """Plots absorption lines within a component over a given spectrum model"""
 
     for aline in comp._abslines:
@@ -185,6 +185,8 @@ def plot_spec_comp(ax, x, spec, comp, min_ew=None, label=False, **kwargs):
 
         wvlim = aline.limits.wvlim
         cond = (spec.wavelength > wvlim[0]) & (spec.wavelength < wvlim[1])
+        if mask_x is not None:
+            cond = cond & (~mask_x)
         ax.plot(x[cond], spec.flux[cond], **kwargs)
         if label:
             # import pdb; pdb.set_trace()
@@ -193,7 +195,7 @@ def plot_spec_comp(ax, x, spec, comp, min_ew=None, label=False, **kwargs):
             y_s = 0.5
             ax.annotate(s, (x_s, y_s), rotation=90, fontsize=6)
 
-def plot_spec_complist(ax, x, spec, complist, min_ew=None, **kwargs):
+def plot_spec_complist(ax, x, spec, complist, min_ew=None, mask_x=None, **kwargs):
     for comp in complist:
-        plot_spec_comp(ax, x, spec, comp, min_ew=min_ew, **kwargs)
+        plot_spec_comp(ax, x, spec, comp, min_ew=min_ew, mask_x=mask_x, **kwargs)
 
