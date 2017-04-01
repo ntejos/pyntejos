@@ -83,12 +83,40 @@ def load_single_x1d_stis(filename, debug=False):
         print("Loading echelle orders from file {}, ext={}".format(filename, ext))
         for ii in range(len(sp.SPORDER)):
             # chop pixels at edges of orders (i.e. poor sensitivity)
-            fl = sp.FLUX[ii][5:-20]
-            er = sp.ERROR[ii][5:-20]
-            wv = sp.WAVELENGTH[ii][5:-20]
+            fl = sp.FLUX[ii][5:-10]
+            er = sp.ERROR[ii][5:-10]
+            wv = sp.WAVELENGTH[ii][5:-10]
             spec = XSpectrum1D.from_tuple((wv,fl,er))
             spec_list += [spec]
             if debug:
                 pl.plot(sp.WAVELENGTH[ii], sp.FLUX[ii], drawstyle='steps-mid')
                 pl.plot(sp.WAVELENGTH[ii], sp.ERROR[ii], ":")
     return spec_list
+
+def coadd_cos_from_x1dfiles(filenames, wv_array=None, A_pix=0.01*u.AA):
+    spec_list = []
+    #TODO: mask out x1d spectral regions with bad values.
+    for filename in filenames:
+        sp = readspec(filename)
+        spec_list += [sp]
+
+    # spec_list contains all individual spectra
+    specs = collate(spec_list)  # now all in a single XSpectrum1D object
+
+    #rebin
+    if wv_array is None:
+        # bring them to a unique native wavelength grid using PYPIT
+        A_pix = A_pix.to("AA").value
+        cat_wave = arco.new_wave_grid(specs.data['wave'], wave_method='pixel', A_pix=A_pix)
+    else:
+        cat_wave = wv_array.to('AA').value
+
+    specs = specs.rebin(cat_wave*u.AA, all=True, do_sig=True, masking='none',grow_bad_sig=True)
+
+    # estimate weights for coaddition (PYPYT)
+    sn2, weights = arco.sn_weight(specs)
+
+    # coaddition
+    spec1d = arco.one_d_coadd(specs, weights)
+    return spec1d
+
