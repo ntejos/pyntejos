@@ -142,7 +142,7 @@ def unify_cluster_catalog_redmapper(catalog, cosmo):
     clusters['r200_mpc'] = r_200
 
     # give unified name
-    name = [give_name(ra,dec) for ra,dec in zip(clusters['ra'],clusters['dec'])]
+    name = [give_name(ra,dec) for ra,dec in zip(clusters['ra_d'],clusters['dec_d'])]
     clusters['name'] = name
 
     return clusters
@@ -207,7 +207,7 @@ def unify_cluster_catalog_GMBCG(catalog, cosmo):
     clusters['r200_mpc'] = r_200
 
     # give unified name
-    name = [give_name(ra,dec) for ra,dec in zip(clusters['ra'],clusters['dec'])]
+    name = [give_name(ra,dec) for ra,dec in zip(clusters['ra_d'],clusters['dec_d'])]
     clusters['name'] = name
 
     return clusters
@@ -255,6 +255,7 @@ def unify_qso_catalog_legacy(qsos):
 
 
 def unify_qso_catalog_HSLA2(qsos):
+    qsos = Table(qsos)
     qsos.rename_column('Target Name','NAME_OLD')
     qsos.rename_column('RA','ra_d')
     qsos.rename_column('DEC','dec_d')
@@ -266,11 +267,12 @@ def unify_qso_catalog_HSLA2(qsos):
     qsos.add_column(Column(name='mag_fuv',data=dummy)) # need to get FUV photometry from somewhere
 
     # unify name
-    name = [give_name(ra,dec) for ra,dec in zip(qsos['ra'],qsos['dec'])]
+    name = [give_name(ra,dec) for ra,dec in zip(qsos['ra_d'],qsos['dec_d'])]
     qsos['name'] = name
     return qsos
 
 def unify_qso_catalog_mq(qsos):
+    qsos = Table(qsos)
     qsos.rename_column('name','NAME_OLD')
     qsos.rename_column("z", 'redshift')
     qsos.add_column(Column(name='objid_mq', data=np.arange(len(qsos))+1))
@@ -280,10 +282,6 @@ def unify_qso_catalog_mq(qsos):
     name = [give_name(ra,dec) for ra,dec in zip(qsos['ra_d'],qsos['dec_d'])]
     qsos['name'] = name
     return qsos
-
-
-
-
 
 def unify_qso_catalog_uvqs(qsos):
     """Unifies the name of columns that are relevant for most analyses"""
