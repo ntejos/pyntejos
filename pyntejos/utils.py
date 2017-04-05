@@ -7,6 +7,18 @@ import json
 import io
 """Module for utils"""
 
+def get_closest_ind(array, value):
+    """Gets the index of array such that array[ind] is the
+    closest element to given value"""
+    ind = np.argmin(np.fabs(value - array))
+    return ind
+
+def get_closest_inds(array, values):
+    """Gets the indices of array such that array[inds] give the closest
+    elements to given values, respectively. Note: there could come
+    with duplication dependind on the `values` array."""
+    inds = [get_closest_ind(array, value) for value in values]
+    return inds
 
 def compare_z(z1, z2, dv):
     """Return true if the difference between z1 and z2 is within dv at
