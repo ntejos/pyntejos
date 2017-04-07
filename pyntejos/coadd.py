@@ -98,6 +98,8 @@ def coadd_cos_from_x1dfiles(filenames, wv_array=None, A_pix=0.01*u.AA):
     #TODO: mask out x1d spectral regions with bad values.
     for filename in filenames:
         sp = readspec(filename)
+        import pdb; pdb.set_trace()
+        mask =
         spec_list += [sp]
 
     # spec_list contains all individual spectra
