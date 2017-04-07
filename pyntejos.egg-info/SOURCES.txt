@@ -1,7 +1,9 @@
+README
 setup.py
 pyntejos/__init__.py
 pyntejos/abslines.py
 pyntejos/catalogs.py
+pyntejos/coadd.py
 pyntejos/coord.py
 pyntejos/fit.py
 pyntejos/io.py
