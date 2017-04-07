@@ -92,6 +92,7 @@ def Nmin(e, dz, s, a, a_err):
     a = np.array(a).astype(float)
     a_err = np.array(a_err).astype(float)
 
+    # this is a analytical expression was derived by N.T.
     return (e / dz / a) * (s ** 2) / ((e - 1.) - s * a_err / a) ** 2
 
 
