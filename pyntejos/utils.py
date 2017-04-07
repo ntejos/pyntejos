@@ -69,6 +69,20 @@ def poisson_err(n):
     return errp, errm
 
 
+def Nmin(e, dz, s, a, a_err):
+    """Estimates the minimum number of independent structures
+    to detect a difference in dN/dz w/r to a field value given
+    by dNdz|field = a +- a_err, at a statistical significance s,
+    using a redshift path of dz per structure"""
+    e = np.array(e).astype(float)
+    dz = np.array(dz).astype(float)
+    s = np.array(s).astype(float)
+    a = np.array(a).astype(float)
+    a_err = np.array(a_err).astype(float)
+
+    return (e / dz / a) * (s ** 2) / ((e - 1.) - s * a_err / a) ** 2
+
+
 def find_edges(a):
     """Assume a is 1-D array of values, where 0 mean masked out. This
     function will provide the indices of lower and upper edges of
