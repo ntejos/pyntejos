@@ -3,8 +3,11 @@ from astropy.constants import c as C
 import numpy as np
 from linetools import utils as ltu
 from linetools.isgm.abscomponent import AbsComponent
+from linetools.spectra.io import readspec
 import json
-import io
+import glob
+import matplotlib.pyplot as plt
+
 """Module for utils"""
 
 def get_closest_ind(array, value):
@@ -130,34 +133,12 @@ def find_edges(a):
 
 def is_local_minima(a):
     """For a given array a, it returns true for local minima"""
-    a = np.array(a)
-    mask = []
-    for i in range(1, len(a) - 1):
-        cond = (a[i] < a[i - 1]) and (a[i] < a[i + 1])
-        if cond:
-            mask += [1]
-        else:
-            mask += [0]
-    mask = np.array(mask)
-    mask = np.append(0, mask)
-    mask = np.append(mask, 0)
-    return mask == 1
+    return ltu.is_local_minima(a)
 
 
 def is_local_maxima(a):
     """For a given array a, returns true for local maxima"""
-    a = np.array(a)
-    mask = []
-    for i in range(1, len(a) - 1):
-        cond = (a[i] > a[i - 1]) and (a[i] > a[i + 1])
-        if cond:
-            mask += [1]
-        else:
-            mask += [0]
-    mask = np.array(mask)
-    mask = np.append(0, mask)
-    mask = np.append(mask, 0)
-    return mask == 1
+    return ltu.is_local_maxima(a)
 
 
 def associate_redshifts(z1, z2, dv):
@@ -332,3 +313,44 @@ def from_complist_to_json(complist, specfile, fwhm, outfile='IGM_model.json'):
         f = open(outfile, 'w')
         f.write(unicode(json.dumps(gd_dict, sort_keys=True, indent=4, separators=(',', ': '))))
         print('Wrote: {:s}'.format(outfile))
+
+
+def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
+    """Plot two XSpectrum1D spectra for comparison purposes"""
+
+    plt.figure()
+    plt.plot(sp1.wavelength, sp1.flux, 'k', drawstyle='steps-mid', label=text1)
+    plt.plot(sp1.wavelength, sp1.sig, 'g', drawstyle='steps-mid')
+    plt.plot(sp2.wavelength, renorm2*sp2.flux, 'b', drawstyle='steps-mid', label=text2)
+    plt.plot(sp2.wavelength, renorm2*sp2.sig, 'y', drawstyle='steps-mid')
+    plt.legend()
+    # print stats
+    print("<SN1> = {}".format(np.median(sp1.flux/sp1.sig)))
+    print("<SN2> = {}".format(np.median(sp2.flux/sp2.sig)))
+    print("<FL_IVAR1> = {}".format(np.median(sp1.flux/sp1.sig**2)))
+    print("<FL_IVAR2> = {}".format(np.median(sp2.flux/sp2.sig**2)))
+    print("<FL1>/<FL2> = {}".format(np.median(sp1.flux/sp2.flux)))
+
+def plot_spec_and_models(spec_filename, models_filenames='all'):
+    """Plots several models in on top of a single spectrum.
+
+    Parameters
+    ----------
+
+
+    """
+    if models_filenames == 'all':
+        models = glob.glob("*_inspect.fits")
+    else:
+        models = models_filenames
+    spec = readspec(spec_filename)
+    models_specs = [readspec(model) for model in models]
+    plt.figure()
+    if spec.co_is_set:
+        spec.normalize(co=spec.co)
+    plt.plot(spec.wavelength, spec.flux, 'k', drawstyle='steps-mid')
+    plt.plot(spec.wavelength, spec.sig, 'g', drawstyle='steps-mid')
+    for model_s in models_specs:
+        plt.plot(model_s.wavelength, model_s.flux, label=model_s.filename.split('_inspect')[0])
+    plt.legend(ncol=5)
+    plt.ylim(-0.2,2.1)
