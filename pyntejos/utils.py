@@ -1,9 +1,13 @@
 from astropy.cosmology import WMAP7 as cosmo
 from astropy.constants import c as C
+from astropy.io import ascii
 import numpy as np
 from linetools import utils as ltu
 from linetools.isgm.abscomponent import AbsComponent
 from linetools.spectra.io import readspec
+from linetools.isgm.io import read_joebvp_to_components
+from linetools.isgm import utils as ltiu
+
 import json
 import glob
 import matplotlib.pyplot as plt
@@ -272,7 +276,7 @@ def complist_from_igmgjson(igmguesses_json):
     return comp_list
 
 
-def from_complist_to_json(complist, specfile, fwhm, outfile='IGM_model.json'):
+def igmgjson_from_complist(complist, specfile, fwhm, outfile='IGM_model.json'):
         """ Write to a JSON file of the IGMGuesses format.
 
         complist : list of AbsComponents
@@ -298,10 +302,10 @@ def from_complist_to_json(complist, specfile, fwhm, outfile='IGM_model.json'):
             out_dict['cmps'][key]['zcomp'] = comp.zcomp
             out_dict['cmps'][key]['zfit'] = comp.zcomp
             out_dict['cmps'][key]['Nfit'] = comp.logN
-            out_dict['cmps'][key]['bfit'] = comp.attrib['b'].value
+            out_dict['cmps'][key]['bfit'] = comp.attrib['b']
             out_dict['cmps'][key]['wrest'] = comp._abslines[0].wrest.value
             out_dict['cmps'][key]['vlim'] = list(comp.vlim.value)
-            out_dict['cmps'][key]['Reliability'] = str(comp.attrib['reliability'])
+            out_dict['cmps'][key]['Reliability'] = str(comp.reliability)
             out_dict['cmps'][key]['Comment'] = str(comp.comment)
             # out_dict['cmps'][key]['mask_abslines'] = comp.mask_abslines
 
@@ -313,6 +317,44 @@ def from_complist_to_json(complist, specfile, fwhm, outfile='IGM_model.json'):
         f = open(outfile, 'w')
         f.write(unicode(json.dumps(gd_dict, sort_keys=True, indent=4, separators=(',', ': '))))
         print('Wrote: {:s}'.format(outfile))
+
+
+def from_joebvp_to_table(joebvp_file, radec):
+    """
+
+    Parameters
+    ----------
+    joebvp_file : str
+        Name of the JOEBVP file
+    radec : SkyCoord
+        Coordinate of object
+
+    Returns
+    -------
+    A table version of the file
+
+    """
+    comps = read_joebvp_to_components(joebvp_file,radec)
+    tab = ltiu.table_from_complist(comps)
+    return tab
+
+def igmgjson_from_joebvp(joebvp_file, radec, specfile, fwhm, outfile='IGM_model_from_joebvp.json'):
+    """
+
+    Parameters
+    ----------
+    joebvp_file : str
+        Name of the JOEBVP file
+    radec : SkyCoord
+        Coordinate of object
+
+    Returns
+    -------
+    A table version of the file
+
+    """
+    comps = read_joebvp_to_components(joebvp_file, radec)
+    igmgjson_from_complist(comps, specfile, fwhm, outfile=outfile)
 
 
 def plot_two_spec(sp1, sp2, text1=None, text2=None, renorm2=1.0):
@@ -354,3 +396,15 @@ def plot_spec_and_models(spec_filename, models_filenames='all'):
         plt.plot(model_s.wavelength, model_s.flux, label=model_s.filename.split('_inspect')[0])
     plt.legend(ncol=5)
     plt.ylim(-0.2,2.1)
+
+
+def give_dv(z, zref, **kwargs):
+    """Wrapper for convinience"""
+    print("This function is now in linetools.utils.dv_from_z(), please avoid using this one.")
+    return ltu.dv_from_z(z, zref, **kwargs)
+
+
+def give_dz(dv, zref, **kwargs):
+    """Wrapper for convinience"""
+    print("This function is now in linetools.utils.dz_from_dv(), please avoid using this one.")
+    return ltu.dz_from_dv(dv, zref, **kwargs)
