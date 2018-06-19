@@ -12,7 +12,7 @@ from astropy import units as u
 """Main module for co-addition of 1-d spectra"""
 
 
-def coadd_stis_from_x1dfiles(filenames, wv_array=None, rebin=None):
+def coadd_stis_from_x1dfiles(filenames, wv_array=None, rebin=None, debug=False):
     """
 
     Parameters
@@ -34,7 +34,7 @@ def coadd_stis_from_x1dfiles(filenames, wv_array=None, rebin=None):
     """
     spec_list = []
     for filename in filenames:
-        aux = load_single_x1d_stis(filename)
+        aux = load_single_x1d_stis(filename, debug=debug)
         for sp in aux:
             spec_list += [sp]
     # spec_list contains all echelle orders from different files and multi-extensions
@@ -51,7 +51,7 @@ def coadd_stis_from_x1dfiles(filenames, wv_array=None, rebin=None):
     specs = specs.rebin(cat_wave*u.AA, all=True, do_sig=True, masking='none',grow_bad_sig=True)
 
     # estimate weights for coaddition (PYPYT)
-    sn2, weights = arco.sn_weight(specs)
+    sn2, weights = arco.sn_weight(specs, smask=None)
 
     # coaddition
     spec1d = arco.one_d_coadd(specs, weights)
@@ -83,9 +83,11 @@ def load_single_x1d_stis(filename, debug=False):
         print("Loading echelle orders from file {}, ext={}".format(filename, ext))
         for ii in range(len(sp.SPORDER)):
             # chop pixels at edges of orders (i.e. poor sensitivity)
-            fl = sp.FLUX[ii][5:-10]
-            er = sp.ERROR[ii][5:-10]
-            wv = sp.WAVELENGTH[ii][5:-10]
+            nchop_blue = 5
+            nchop_red = 50
+            fl = sp.FLUX[ii][nchop_blue:-nchop_red]
+            er = sp.ERROR[ii][nchop_blue:-nchop_red]
+            wv = sp.WAVELENGTH[ii][nchop_blue:-nchop_red]
             spec = XSpectrum1D.from_tuple((wv,fl,er))
             spec_list += [spec]
             if debug:
@@ -99,7 +101,7 @@ def coadd_cos_from_x1dfiles(filenames, wv_array=None, A_pix=0.01*u.AA):
     for filename in filenames:
         sp = readspec(filename)
         import pdb; pdb.set_trace()
-        mask =
+        # mask =
         spec_list += [sp]
 
     # spec_list contains all individual spectra

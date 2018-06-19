@@ -5,7 +5,7 @@ import numpy as np
 from linetools import utils as ltu
 from linetools.isgm.abscomponent import AbsComponent
 from linetools.spectra.io import readspec
-from linetools.isgm.io import read_joebvp_to_components
+import linetools.isgm.io as ltiio
 from linetools.isgm import utils as ltiu
 
 import json
@@ -253,6 +253,8 @@ def complist_from_igmgjson(igmguesses_json):
         A list of AbsComponents
 
     """
+    return ltiio.read_igmg_to_components(igmguesses_json)
+
     # Read the JSON file
     with open(igmguesses_json) as data_file:
         igmg_dict = json.load(data_file)
@@ -334,7 +336,7 @@ def from_joebvp_to_table(joebvp_file, radec):
     A table version of the file
 
     """
-    comps = read_joebvp_to_components(joebvp_file,radec)
+    comps = ltiio.read_joebvp_to_components(joebvp_file,radec)
     tab = ltiu.table_from_complist(comps)
     return tab
 
@@ -353,7 +355,7 @@ def igmgjson_from_joebvp(joebvp_file, radec, specfile, fwhm, outfile='IGM_model_
     A table version of the file
 
     """
-    comps = read_joebvp_to_components(joebvp_file, radec)
+    comps = ltiio.read_joebvp_to_components(joebvp_file, radec)
     igmgjson_from_complist(comps, specfile, fwhm, outfile=outfile)
 
 

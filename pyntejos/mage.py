@@ -1,0 +1,1 @@
+"""Module for dealing with Magellan/Mage data"""
