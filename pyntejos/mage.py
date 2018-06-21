@@ -119,7 +119,7 @@ def create_ref_hdulist(reference_muse_file, reference_mage_file, params):
     # return
     return hdulist_muse
 
-def dump_config_make_MagE_cube():
+def write_config_make_MagE_cube_dummy(filename):
     """Dumps a dummy configuration file for mage.make_MagE_cube()"""
     params = dict(
     directory_mage = "Directory of the MagE data for a single slit with format and naming convention of S. Lopez",
@@ -128,10 +128,10 @@ def dump_config_make_MagE_cube():
     output_cube = "Name of output .fits file of the MagE datacube (e.g. cube_mage.fits)",
     CRPIX1 =  1,
     CRPIX2 =  1,
-    CRVAL1 = "RA coordinate in degrees of cube pixel (1,1). Must be float!",
-    CRVAL2 = "Dec coordinate in degrees of cube pixel (1,1). Must be float!",
-    PIXSCALE_Y = "Pix scale along the slit in degrees. Must be float!",
-    PIXSCALE_X = "Pix scale transverse to the slit direction in degrees. Must be float!",
+    CRVAL1 = "RA coordinate in degrees of cube spaxel (1,1). Must be float!",
+    CRVAL2 = "Dec coordinate in degrees of cube spaxel (1,1). Must be float!",
+    PIXSCALE_Y = "Pix scale along the slit in degrees/pixel. Must be float!",
+    PIXSCALE_X = "Pix scale transverse to the slit direction in degrees/pixel. Must be float!",
     POS_ANGLE = "Position angle of the slit in degrees. Use string None if the angle is read from the header of the reference MagE file",
     CD3_3  =  "Delta lambda. Must be float!",
     CRPIX3 =  1,
@@ -142,7 +142,7 @@ def dump_config_make_MagE_cube():
     REDUCED_EXPTIME = "Total exposure time of the cube, from the reduction. Must be int or float!"
     )
     import json
-    with open('config_make_MagE_dummy.json', 'w') as fp:
+    with open(filename, 'w') as fp:
         json.dump(params, fp)
 
 
