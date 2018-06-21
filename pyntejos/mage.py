@@ -121,29 +121,32 @@ def create_ref_hdulist(reference_muse_file, reference_mage_file, params):
 
 def write_config_make_MagE_cube_dummy(filename):
     """Dumps a dummy configuration file for mage.make_MagE_cube()"""
-    params = dict(
-    directory_mage = "Directory of the MagE data for a single slit with format and naming convention of S. Lopez",
-    reference_mage = "Filename of a MagE .fits image of reference of the observations. Headers will be updated from this",
-    reference_muse = "Filename of a MUSE .fits cube of reference, to define the relevant keywords of the MagE cube.",
-    output_cube = "Name of output .fits file of the MagE datacube (e.g. cube_mage.fits)",
-    CRPIX1 =  1,
-    CRPIX2 =  1,
-    CRVAL1 = "RA coordinate in degrees of cube spaxel (1,1). Must be float!",
-    CRVAL2 = "Dec coordinate in degrees of cube spaxel (1,1). Must be float!",
-    PIXSCALE_Y = "Pix scale along the slit in degrees/pixel. Must be float!",
-    PIXSCALE_X = "Pix scale transverse to the slit direction in degrees/pixel. Must be float!",
-    POS_ANGLE = "Position angle of the slit in degrees. Use string None if the angle is read from the header of the reference MagE file",
-    CD3_3  =  "Delta lambda. Must be float!",
-    CRPIX3 =  1,
-    CRVAL3 =  "Lambda_0. Must be float!",
-    BUNIT = "Unit of flux, as string: e.g. XXX *erg/s/cm**2/Angstrom",
-    REDUCED_BY = "Name of person who performed the reduction.",
-    REDUCED_DATE = "Date of the reduction",
-    REDUCED_EXPTIME = "Total exposure time of the cube, from the reduction. Must be int or float!"
-    )
-    import json
-    with open(filename, 'w') as fp:
-        json.dump(params, fp)
+    text ="""
+{
+    "directory_mage" : "Directory of the MagE data for a single slit with format and naming convention of S. Lopez",
+    "reference_mage" : "Filename of a MagE .fits image of reference of the observations. Headers will be updated from this",
+    "reference_muse" : "Filename of a MUSE .fits cube of reference, to define the relevant keywords of the MagE cube.",
+    "output_cube" : "Name of output .fits file of the MagE datacube (e.g. cube_mage.fits)",
+    "CRPIX1" :  1,
+    "CRPIX2" :  1,
+    "CRVAL1" : "RA coordinate in degrees of cube spaxel (1,1). Must be float!",
+    "CRVAL2" : "Dec coordinate in degrees of cube spaxel (1,1). Must be float!",
+    "PIXSCALE_Y" : "Pix scale along the slit in degrees/pixel. Must be float!",
+    "PIXSCALE_X" : "Pix scale transverse to the slit direction in degrees/pixel. Must be float!",
+    "POS_ANGLE" : "Position angle of the slit in degrees. Use string None if the angle is read from the header of the reference MagE file",
+    "CD3_3"  :  "Delta lambda. Must be float!",
+    "CRPIX3" :  1,
+    "CRVAL3" :  "Lambda_0. Must be float!",
+    "BUNIT" : "Unit of flux, as string: e.g. XXX *erg/s/cm**2/Angstrom",
+    "REDUCED_BY" : "Name of person who performed the reduction.",
+    "REDUCED_DATE" : "Date of the reduction",
+    "REDUCED_EXPTIME" : "Total exposure time of the cube, from the reduction. Must be int or float!"
+}"""
+    f = open(filename, 'w')
+    f.write(text)
+    f.close()
+    # with open(filename, 'w') as fp:
+    #     json.dump(params, fp, indent=4)
 
 
 def make_MagE_cube(config_file):
@@ -166,21 +169,18 @@ def make_MagE_cube(config_file):
     reference_muse_file = params['reference_muse']
 
     # Add comment on how the header was created
-    comment = ' Cube created by pyntejos.mage.make_MagE_cube.py based on headers from {} and {}. Astrometry ' \
+    comment = 'Cube created by pyntejos.mage.make_MagE_cube.py based on headers from {} and {}. Astrometry ' \
               'and wavelength axis given by input configuration ' \
               'file {}.'.format(reference_mage_file.split('/')[-1],reference_muse_file.split('/')[-1], params['config_filename'])
 
     # Print message
-    print(comment.replace("Cube created", "MagE cube will be created."))
+    print('')
+    print(comment.replace("Cube created", "MagE cube will be created"))
 
     dirname = params['directory_mage']
     filenames = glob.glob(dirname+"/*.txt")
     # sort them
     filenames.sort()
-
-    for ii,fname in enumerate(filenames):
-        fn = fname.split('/')[-1]
-        print("\t {}: {}".format(ii+1, fn))
 
     # create the new datacube structure
     len_wv = read_single_mage_file(filenames[0]).npix
@@ -212,4 +212,4 @@ def make_MagE_cube(config_file):
 
     # write the cube
     hdulist_new.writeto(params['output_cube'], clobber=True)
-
+    print('Wrote file: {}'.format(params['output_cube']))
