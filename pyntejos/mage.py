@@ -170,26 +170,30 @@ def make_MagE_cube(config_file):
               'and wavelength axis given by input configuration ' \
               'file {}.'.format(reference_mage_file.split('/')[-1],reference_muse_file.split('/')[-1], params['config_filename'])
 
-    hdu['COMMENT'] = comment
-    pr_hdr['COMMENT'] = comment
-
-
-
+    # Print message
+    print(comment.replace("Cube created", "MagE cube will be created."))
 
     dirname = params['directory_mage']
     filenames = glob.glob(dirname+"/*.txt")
     # sort them
     filenames.sort()
 
+    for ii,fname in enumerate(filenames):
+        fn = fname.split('/')[-1]
+        print("\t {}: {}".format(ii+1, fn))
+
     # create the new datacube structure
     len_wv = read_single_mage_file(filenames[0]).npix
     cube = np.zeros_like(np.ndarray(shape=(len_wv, len(filenames), 1)))
     stat = np.zeros_like(cube)
 
-    # fill the data cubes (cube and stat)
+    # read the files and fill the data cubes (cube and stat)
+    print("Reading files from directory {} ordered as:".format(dirname))
     for ii,fname in enumerate(filenames):
+        fn = fname.split('/')[-1]
+        print("\t {}: {}".format(ii + 1, fn))
         # MAKE SURE THE SPECTRA IS PROPERLY SORTED
-        nfile = fname.split('/')[-1].split('.')[0].split('_')[-1]
+        nfile = fn.split('.')[0].split('_')[-1]
         nfile = int(nfile)
         assert nfile == ii +1, "The files in the directory are not sorted properly. Please check."
         try:
@@ -202,9 +206,6 @@ def make_MagE_cube(config_file):
     # get the reference hdulist
     hdulist_new = create_ref_hdulist(params['reference_muse'], params['reference_mage'], params)
 
-    if test:
-        cube = cube[1000]
-        stat = stat[1000]
     # update the data
     hdulist_new[1].data = cube
     hdulist_new[2].data = stat
