@@ -5,8 +5,10 @@ pyntejos/abslines.py
 pyntejos/catalogs.py
 pyntejos/coadd.py
 pyntejos/coord.py
+pyntejos/etcs.py
 pyntejos/fit.py
 pyntejos/io.py
+pyntejos/mage.py
 pyntejos/muse.py
 pyntejos/parse.py
 pyntejos/plots.py
