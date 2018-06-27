@@ -13,6 +13,7 @@ from astropy.io.fits.hdu.table import BinTableHDU
 from astropy.io.fits import HDUList, PrimaryHDU, ImageHDU
 from astropy.utils import isiterable
 from linetools.spectra.xspectrum1d import XSpectrum1D
+import copy
 import json
 
 usage = """\
@@ -21,7 +22,7 @@ Usage: make_mage_cube.py config_file.json
 
 def read_single_mage_file(filename, **kwargs):
     """Reads single mage file produced by MIDAS (SLopez format) and returns
-    a XSpectrum1D object"""
+    a XSpectrum1D object, and a model if there is a fifth column in file"""
 
     # hd = hdulist[0].header
     # uwave = setwave(hd) * u.Angstrom
@@ -30,8 +31,13 @@ def read_single_mage_file(filename, **kwargs):
     wv = spec['col2'].data * u.Angstrom
     fl = spec['col3'].data
     sig = spec['col4'].data
+    try:
+        model = spec['col5'].data  # fifth column must be the model
+    except:
+        model = np.ones_like(fl)
     xspec1d = XSpectrum1D.from_tuple((wv, fl, sig), **kwargs)
-    return xspec1d
+    model_spec = XSpectrum1D.from_tuple((wv, model))
+    return xspec1d, model_spec
 
 
 def get_CD_matrix(pixscale_x, pixscale_y, pos_angle):
@@ -116,6 +122,8 @@ def create_ref_hdulist(reference_muse_file, reference_mage_file, params):
             if key == 'COMMENT':
                 if "ZAP" in hdu['COMMENT']:
                     del hdu['COMMENT']
+        # update units
+        hdu['BUNIT'] = params['BUNIT']
     # return
     return hdulist_muse
 
@@ -183,9 +191,10 @@ def make_MagE_cube(config_file):
     filenames.sort()
 
     # create the new datacube structure
-    len_wv = read_single_mage_file(filenames[0]).npix
+    len_wv = read_single_mage_file(filenames[0])[0].npix
     cube = np.zeros_like(np.ndarray(shape=(len_wv, len(filenames), 1)))
     stat = np.zeros_like(cube)
+    model = np.zeros_like(cube)
 
     # read the files and fill the data cubes (cube and stat)
     print("Reading files from directory {} ordered as:".format(dirname))
@@ -197,9 +206,10 @@ def make_MagE_cube(config_file):
         nfile = int(nfile)
         assert nfile == ii +1, "The files in the directory are not sorted properly. Please check."
         try:
-            spec = read_single_mage_file(fname)
+            spec, model_sp = read_single_mage_file(fname)
             cube[:,ii,0] = spec.flux.value
             stat[:,ii,0] = spec.sig.value
+            model[:,ii,0] = model_sp.flux.value
         except:
             raise ValueError("Something is wrong with spectrum {}".format(fname.split('/')[-1]))
 
@@ -209,6 +219,12 @@ def make_MagE_cube(config_file):
     # update the data
     hdulist_new[1].data = cube
     hdulist_new[2].data = stat
+
+    # add model HDU
+    hdu_model = copy.deepcopy(hdulist_new[2])
+    hdu_model.data = model
+    hdu_model.header['EXTNAME'] = 'MODEL'
+    hdulist_new.append(hdu_model)
 
     # write the cube
     hdulist_new.writeto(params['output_cube'], clobber=True)
