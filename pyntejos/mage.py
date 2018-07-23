@@ -22,22 +22,21 @@ Usage: make_mage_cube.py config_file.json
 
 def read_single_mage_file(filename, **kwargs):
     """Reads single mage file produced by MIDAS (SLopez format) and returns
-    a XSpectrum1D object, and a model if there is a fifth column in file"""
+    a XSpectrum1D object"""
 
     # hd = hdulist[0].header
     # uwave = setwave(hd) * u.Angstrom
-    spec = ascii.read(filename, data_start=3, data_end=-1)
-    # import pdb; pdb.set_trace()
+    spec = ascii.read(filename, data_start=3, data_end=-1, header_start=None)
+    # import pdb;pdb.set_trace()
     wv = spec['col2'].data * u.Angstrom
     fl = spec['col3'].data
-    sig = spec['col4'].data
     try:
-        model = spec['col5'].data  # fifth column must be the model
+        sig = spec['col4'].data
     except:
-        model = np.ones_like(fl)
+        sig = np.ones_like(fl)
+
     xspec1d = XSpectrum1D.from_tuple((wv, fl, sig), **kwargs)
-    model_spec = XSpectrum1D.from_tuple((wv, model))
-    return xspec1d, model_spec
+    return xspec1d
 
 
 def get_CD_matrix(pixscale_x, pixscale_y, pos_angle):
@@ -191,10 +190,10 @@ def make_MagE_cube(config_file):
     filenames.sort()
 
     # create the new datacube structure
-    len_wv = read_single_mage_file(filenames[0])[0].npix
+    len_wv = read_single_mage_file(filenames[0]).npix
     cube = np.zeros_like(np.ndarray(shape=(len_wv, len(filenames), 1)))
     stat = np.zeros_like(cube)
-    model = np.zeros_like(cube)
+    # model = np.zeros_like(cube)
 
     # read the files and fill the data cubes (cube and stat)
     print("Reading files from directory {} ordered as:".format(dirname))
@@ -206,10 +205,10 @@ def make_MagE_cube(config_file):
         nfile = int(nfile)
         assert nfile == ii +1, "The files in the directory are not sorted properly. Please check."
         try:
-            spec, model_sp = read_single_mage_file(fname)
+            spec = read_single_mage_file(fname)
             cube[:,ii,0] = spec.flux.value
             stat[:,ii,0] = spec.sig.value
-            model[:,ii,0] = model_sp.flux.value
+            # model[:,ii,0] = model_sp.flux.value
         except:
             raise ValueError("Something is wrong with spectrum {}".format(fname.split('/')[-1]))
 
@@ -221,10 +220,10 @@ def make_MagE_cube(config_file):
     hdulist_new[2].data = stat
 
     # add model HDU
-    hdu_model = copy.deepcopy(hdulist_new[2])
-    hdu_model.data = model
-    hdu_model.header['EXTNAME'] = 'MODEL'
-    hdulist_new.append(hdu_model)
+    # hdu_model = copy.deepcopy(hdulist_new[2])
+    # hdu_model.data = model
+    # hdu_model.header['EXTNAME'] = 'MODEL'
+    # hdulist_new.append(hdu_model)
 
     # write the cube
     hdulist_new.writeto(params['output_cube'], clobber=True)
