@@ -257,14 +257,18 @@ if 0:
     print ("=== Finished Calibration Processing ===")
 
 
-def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
+def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
         qd_full={'use_me': 1, 'Instrument': 'GMOS-S', 'CcdBin': '2 4', 'RoI': 'Full', 'Disperser': 'B600+_%', 'CentWave': 485.0, 'AperMask': '1.0arcsec', 'Object': 'AM2306-72%','DateObs': '2007-06-05:2007-07-07'},
         qd_censp={'use_me': 1, 'Instrument': 'GMOS-S', 'CcdBin': '2 4', 'RoI': 'CenSp', 'Disperser': 'B600+_%', 'CentWave': 485.0, 'AperMask': '1.0arcsec', 'Object': 'LTT9239','DateObs': '2007-06-05:2007-07-07'},
         biasFlags={'logfile': 'biasLog.txt', 'rawpath': './raw/', 'fl_vardq': 'yes', 'verbose': 'no'},
         flatFlags = {'fl_over': 'yes', 'fl_trim': 'yes', 'fl_bias': 'yes', 'fl_dark': 'no', 'fl_fixpix': 'no', 'fl_oversize': 'no', 'fl_vardq': 'yes', 'fl_fulldq': 'yes','rawpath': './raw', 'fl_inter': 'no', 'fl_detec': 'yes', 'function': 'spline3', 'order': '13,11,28', 'logfile': 'gsflatLog.txt', 'verbose': 'no'},
         sciFlags = {'fl_over': 'yes', 'fl_trim': 'yes', 'fl_bias': 'yes', 'fl_gscrrej': 'no','fl_dark': 'no', 'fl_flat': 'yes', 'fl_gmosaic': 'yes', 'fl_fixpix': 'no', 'fl_gsappwave': 'yes', 'fl_oversize': 'no', 'fl_vardq': 'yes', 'fl_fulldq': 'yes', 'rawpath': './raw', 'fl_inter': 'no', 'logfile': 'gsreduceLog.txt', 'verbose': 'no'},
         waveFlags = {'coordlist': 'gmos$data/CuAr_GMOS.dat', 'fwidth': 6, 'nsum': 50, 'function': 'chebyshev', 'order': 5, 'fl_inter': 'no', 'logfile': 'gswaveLog.txt', 'verbose': 'no'},
+        sciCombFlags = {'combine': 'average', 'reject': 'ccdclip', 'fl_vardq': 'yes', 'fl_dqprop': 'yes', 'logfile': 'gemcombineLog.txt', 'verbose': 'no'},
+        skyFlags = {'fl_oversize': 'no', 'fl_vardq': 'yes', 'logfile': 'gsskysubLog.txt'},
+        transFlags={'fl_vardq': 'yes', 'interptype': 'linear', 'fl_flux': 'yes', 'logfile': 'gstransLog.txt'},
         clean_files=False):
+
     """
     Parameters
     ----------
@@ -293,6 +297,17 @@ def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
     waveFlags : dict
         Dictionary for the keyword flags of gmos.gswavelength() function
 
+    sciCombFlags : dict
+        Dictionary for the keyword flags of gemtools.gemcombine() function
+        Based on these flags a set of stdCombFlags dictionary will be created for the standard advanced processing.
+    skyFlags : dict
+
+          'fl_oversize': 'no', 'fl_vardq': 'yes', 'logfile': 'gsskysubLog.txt'
+    }
+
+    transFlags : dict
+        Dictionary for the keyword flags of gmos.gstransform() function.
+        xxx
 
     Returns
     -------
@@ -305,9 +320,7 @@ def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
 
     # From the work_directory:
     # Create the query dictionary of essential parameter=value pairs for Full and CenSp RoIs
-    # Select bias exposures within ~2 months of the target observations:
     qd = {'Full': qd_full, 'CenSp' = qd_censp}
-
 
     print (" --Creating Bias MasterCal--")
 
@@ -407,34 +420,28 @@ def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
         ask_user("Do you still want to proceed despite this important warning? (y/n): ", ['yes','y'])
 
     # Need to select specific wavecals to match science exposures.
+    # NT TODO: get these as extra parameters of the main call
     prefix = 'gsS20070623S0'
     for arc in ['071', '081', '091', '109']:
         gmos.gswavelength(prefix + arc, **waveFlags)
 
     ### End of basic processing. Continue with advanced processing.
+    ask_user("Wavelength solution done. Would you like to continue with advanced processing? (y/n): ",['y','yes'])
 
     print (" -- Performing Advanced Processing --")
     print (" -- Combine exposures, apply dispersion, subtract sky --")
     # Set task parameters.
     gemtools.gemcombine.unlearn()
-    sciCombFlags = {
-        'combine': 'average', 'reject': 'ccdclip',
-        'fl_vardq': 'yes', 'fl_dqprop': 'yes',
-        'logfile': 'gemcombineLog.txt.txt', 'verbose': 'no'
-    }
+    sciCombFlags = sciCombFlags
     stdCombFlags = copy.deepcopy(sciCombFlags)
     stdCombFlags.update({'fl_vardq': 'no', 'fl_dqprop': 'no'})
     gmos.gstransform.unlearn()
-    transFlags = {
-        'fl_vardq': 'yes', 'interptype': 'linear', 'fl_flux': 'yes',
-        'logfile': 'gstransLog.txt'
-    }
+
     # The sky regions should be selected with care, using e.g. prows/pcols:
     #   pcols ("tAM2306b.fits[SCI]", 1100, 2040, wy1=40, wy2=320)
+
     gmos.gsskysub.unlearn()
-    skyFlags = {
-        'fl_oversize': 'no', 'fl_vardq': 'yes', 'logfile': 'gsskysubLog.txt'
-    }
+
 
     # Process the Standard Star
     prefix = "gs"
@@ -506,4 +513,4 @@ def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
     print ("=== Finished Calibration Processing ===")
 
 if __name__ == "__main__":
-    gmos_ls_proc()
+    gmos_ls_proc2()
