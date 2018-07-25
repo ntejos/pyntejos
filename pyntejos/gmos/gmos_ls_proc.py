@@ -467,6 +467,8 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
 
 
     stop
+    # NT: make sure the process works ok until here before proceeding further. i.e. setting the sky region manually and correctly.
+
     print (" -- Extract Std spectrum --")
     # Extract the std spectruma using a large aperture.
     # It's important to trace the spectra interactively.
