@@ -7,6 +7,7 @@ import copy
 from pyraf import iraf
 from pyraf.iraf import gemini, gemtools, gmos, onedspec
 import fileSelect as fs
+from utils import ask_user
 
 def create_database():
     # check whether
@@ -257,11 +258,13 @@ if 0:
 
 
 def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
-                 qd_full={'use_me': 1, 'Instrument': 'GMOS-S', 'CcdBin': '2 4', 'RoI': 'Full', 'Disperser': 'B600+_%', 'CentWave': 485.0, 'AperMask': '1.0arcsec', 'Object': 'AM2306-72%','DateObs': '2007-06-05:2007-07-07'},
-                 qd_censp={'use_me': 1, 'Instrument': 'GMOS-S', 'CcdBin': '2 4', 'RoI': 'CenSp', 'Disperser': 'B600+_%', 'CentWave': 485.0, 'AperMask': '1.0arcsec', 'Object': 'LTT9239','DateObs': '2007-06-05:2007-07-07'},
-                 biasFlags={'logfile': 'biasLog.txt', 'rawpath': './raw/', 'fl_vardq': 'yes', 'verbose': 'no'},
-
-                clean_files=False):
+        qd_full={'use_me': 1, 'Instrument': 'GMOS-S', 'CcdBin': '2 4', 'RoI': 'Full', 'Disperser': 'B600+_%', 'CentWave': 485.0, 'AperMask': '1.0arcsec', 'Object': 'AM2306-72%','DateObs': '2007-06-05:2007-07-07'},
+        qd_censp={'use_me': 1, 'Instrument': 'GMOS-S', 'CcdBin': '2 4', 'RoI': 'CenSp', 'Disperser': 'B600+_%', 'CentWave': 485.0, 'AperMask': '1.0arcsec', 'Object': 'LTT9239','DateObs': '2007-06-05:2007-07-07'},
+        biasFlags={'logfile': 'biasLog.txt', 'rawpath': './raw/', 'fl_vardq': 'yes', 'verbose': 'no'},
+        flatFlags = {'fl_over': 'yes', 'fl_trim': 'yes', 'fl_bias': 'yes', 'fl_dark': 'no', 'fl_fixpix': 'no', 'fl_oversize': 'no', 'fl_vardq': 'yes', 'fl_fulldq': 'yes','rawpath': './raw', 'fl_inter': 'no', 'fl_detec': 'yes', 'function': 'spline3', 'order': '13,11,28', 'logfile': 'gsflatLog.txt', 'verbose': 'no'},
+        sciFlags = {'fl_over': 'yes', 'fl_trim': 'yes', 'fl_bias': 'yes', 'fl_gscrrej': 'no','fl_dark': 'no', 'fl_flat': 'yes', 'fl_gmosaic': 'yes', 'fl_fixpix': 'no', 'fl_gsappwave': 'yes', 'fl_oversize': 'no', 'fl_vardq': 'yes', 'fl_fulldq': 'yes', 'rawpath': './raw', 'fl_inter': 'no', 'logfile': 'gsreduceLog.txt', 'verbose': 'no'},
+        waveFlags = {'coordlist': 'gmos$data/CuAr_GMOS.dat', 'fwidth': 6, 'nsum': 50, 'function': 'chebyshev', 'order': 5, 'fl_inter': 'no', 'logfile': 'gswaveLog.txt', 'verbose': 'no'},
+        clean_files=False):
     """
     Parameters
     ----------
@@ -278,6 +281,18 @@ def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
 
     biasFlags : dict
         Dictionary for the keyword flags of gmos.gbias() function
+
+    flatFlags : dict
+        Dictionary for the keyword flags of gmos.gsflat() function
+
+    sciFlags : dict
+        Dictionary for the keyword flags of gmos.gsreduce() function
+        Based on these flags a set of arcFlags and stdFlags dictionaries will be created
+        for basic processing.
+
+    waveFlags : dict
+        Dictionary for the keyword flags of gmos.gswavelength() function
+
 
     Returns
     -------
@@ -316,6 +331,8 @@ def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
     if clean_files:
         iraf.imdel("gS2007*.fits")
 
+    ask_user("MC Bias done. Would you like to continue to proceed with GCAL Spectral Master Flats? (y/n): ",['y','yes'])
+
     print (" -- Creating GCAL Spectral Flat-Field MasterCals --")
     # Set the task parameters.
     qd['Full'].update({'DateObs': '*'})
@@ -326,16 +343,8 @@ def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
     # The response fitting should be done interactively.
     if flatFlags['fl_inter'] != 'yes':
         print("The response fitting should be done interactively. Please set flatFlags['fl_inter'] = 'yes'.")
-        ask_user
-        raise ValueError('The response fitting should be done interactively.')
+        ask_user("Do you still want to proceed despite this important warning? (y/n): ", ['yes','y'])
 
-    flatFlags = {
-        'fl_over': 'yes', 'fl_trim': 'yes', 'fl_bias': 'yes', 'fl_dark': 'no',
-        'fl_fixpix': 'no', 'fl_oversize': 'no', 'fl_vardq': 'yes', 'fl_fulldq': 'yes',
-        'rawpath': './raw', 'fl_inter': 'no', 'fl_detec': 'yes',
-        'function': 'spline3', 'order': '13,11,28',
-        'logfile': 'gsflatLog.txt', 'verbose': 'no'
-    }
     for r in regions:
         qr = qd[r]
         flatFiles = fs.fileListQuery(dbFile, fs.createQuery('gcalFlat', qr), qr)
@@ -346,18 +355,13 @@ def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
     if clean_files:
         iraf.imdel('gS2007*.fits,gsS2007*.fits')
 
+    ask_user("GCAL Spectral Flat-Field MasterCals done. Would you like to continue to proceed with Basic Processing? (y/n): ",['y','yes'])
+
     print ("=== Processing Science Files ===")
     print (" -- Performing Basic Processing --")
-
     # Set task parameters.
     gmos.gsreduce.unlearn()
-    sciFlags = {
-        'fl_over': 'yes', 'fl_trim': 'yes', 'fl_bias': 'yes', 'fl_gscrrej': 'no',
-        'fl_dark': 'no', 'fl_flat': 'yes', 'fl_gmosaic': 'yes', 'fl_fixpix': 'no',
-        'fl_gsappwave': 'yes', 'fl_oversize': 'no',
-        'fl_vardq': 'yes', 'fl_fulldq': 'yes', 'rawpath': './raw',
-        'fl_inter': 'no', 'logfile': 'gsreduceLog.txt', 'verbose': 'no'
-    }
+    sciFlags = sciFlags  # redundant but put here because NT likes it
     arcFlags = copy.deepcopy(sciFlags)
     arcFlags.update({'fl_flat': 'no', 'fl_vardq': 'no', 'fl_fulldq': 'no'})
     stdFlags = copy.deepcopy(sciFlags)
@@ -390,16 +394,18 @@ def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
     if clean_files:
         iraf.imdel('gS2007*.fits')
 
+    ask_user("Basic processing done. Would you like to continue to determine wavelength calibration? (y/n): ",['y','yes'])
+
     print (" -- Determine wavelength calibration --")
     # Set task parameters
     gmos.gswavelength.unlearn()
-    waveFlags = {
-        'coordlist': 'gmos$data/CuAr_GMOS.dat', 'fwidth': 6, 'nsum': 50,
-        'function': 'chebyshev', 'order': 5,
-        'fl_inter': 'no', 'logfile': 'gswaveLog.txt', 'verbose': 'no'
-    }
+
     # The fit to the dispersion relation should be performed interactively.
     # Here we will use a previously determined result.
+    if waveFlags['fl_inter'] != 'yes':
+        print("The fit to the dispersion relation should be performed interactively. Please set waveFlags['fl_inter'] = 'yes'.")
+        ask_user("Do you still want to proceed despite this important warning? (y/n): ", ['yes','y'])
+
     # Need to select specific wavecals to match science exposures.
     prefix = 'gsS20070623S0'
     for arc in ['071', '081', '091', '109']:
