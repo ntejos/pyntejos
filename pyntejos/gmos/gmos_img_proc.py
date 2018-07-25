@@ -9,6 +9,13 @@ import fileSelect as fs
 
 bpm_gmos="/home/ntejos/python/pyntejos/pyntejos/gmos/bpm_gmos-s_EEV_v1_2x2_img_MEF.fits"
 
+def ask_user(question, good_answers):
+    answer = raw_input(question)
+    if answer in good_answers
+        pass
+    else:
+        raise ValueError("Stopping process because user said so.")
+
 # def gmos_img_proc():
 if 0:
     '''
@@ -252,11 +259,7 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
     if clean_files:
         iraf.imdel('gS{}*.fits'.format(year_obs))
 
-    answer = raw_input("MC Bias done. Would you like to continue to proceed with Master Flats? (y/n): ")
-    if answer in ['y','yes']:
-        pass
-    else:
-        raise ValueError("Stopping process because user said so.")
+    ask_user("MC Bias done. Would you like to continue to proceed with Master Flats? (y/n): ",['y','yes'])
 
     print (" --Creating Twilight Imaging Flat-Field MasterCal--")
     # Select flats obtained contemporaneously with the observations.
@@ -283,11 +286,7 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
         #iraf.imdel('gS{}*.fits,rgS{}*.fits'.format(year_obs, year_obs))
         pass
 
-    answer = raw_input("MC Flats done. Would you like to continue to proceed with processing Science Images? (y/n): ")
-    if answer in ['y','yes']:
-        pass
-    else:
-        raise ValueError("Stopping process because user said so.")
+    ask_user("MC Flats done. Would you like to continue to proceed with processing Science Images? (y/n): ", ['yes','y'])
 
     print ("=== Processing Science Images ===")
     # Remove restriction on date range
@@ -317,12 +316,7 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
     if clean_files:
         iraf.imdelete('gS{}*.fits,rgS{}*.fits'.format(year_obs,year_obs))
 
-
-    answer = raw_input("Science Images done. Would you like to continue to proceed with image co-addition? (y/n): ")
-    if answer in ['y','yes']:
-        pass
-    else:
-        raise ValueError("Stopping process because user said so.")
+    ask_user("Science Images done. Would you like to continue to proceed with image co-addition? (y/n): ", ['y','yes'])
 
     ## Co-add the images, per position and filter.
     print (" -- Begin image co-addition --")
@@ -343,6 +337,8 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
                 print('No files available for co-addition...')
                 import pdb; pdb.set_trace()
             gemtools.imcoadd(all_files, outimage=outImage, **coaddFlags)
+
+    ask_user("Co-addition done. Would you like to clean intermediate reduction files? (y/n): ", ['y','yes'])
 
     if clean_files:
         iraf.delete("*_trn*,*_pos,*_cen")
