@@ -10,11 +10,23 @@ import fileSelect as fs
 bpm_gmos="/home/ntejos/python/pyntejos/pyntejos/gmos/bpm_gmos-s_EEV_v1_2x2_img_MEF.fits"
 
 def ask_user(question, good_answers):
+    """
+
+    Parameters
+    ----------
+    question : string
+    good_answers : list of strings
+
+    Returns
+    -------
+
+    """
     answer = raw_input(question)
-    if answer in good_answers
+    if answer in good_answers:
         pass
     else:
         raise ValueError("Stopping process because user said so.")
+
 
 # def gmos_img_proc():
 if 0:

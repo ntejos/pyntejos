@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# shaw@noao.edu  2016-Jun-09
+# (c) shaw@noao.edu  2016-Jun-09
 
 import argparse
 import glob, os
