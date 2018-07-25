@@ -9,4 +9,4 @@ setup(
     license="BSD",
     author_email="ntejos@gmail.com",
     url="https://github.com/ntejos/pyntejos",
-    packages=['pyntejos'])
+    packages=['pyntejos', 'pyntejos.gmos'])

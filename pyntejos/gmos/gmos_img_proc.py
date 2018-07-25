@@ -219,6 +219,8 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
 
     Returns
     -------
+    Reduce GMOS imaging based on tutorial example.
+
 
     """
     print ("### Begin Processing GMOS/MOS Images ###")
@@ -241,14 +243,20 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
     # The str.join() function is needed to transform a python list into a string
     # filelist that IRAF can understand.
     if len(biasFiles) > 1:
-        gmos.gbias(','.join(str(x) for x in biasFiles), 'MCbias.fits',
-                   **biasFlags)
+        files_all = ','.join(str(x) for x in biasFiles)
+        # import pdb; pdb.set_trace()
+        gmos.gbias(files_all, 'MCbias.fits', **biasFlags)
 
     # Clean up
     year_obs = qd['DateObs'].split('-')[0]
     if clean_files:
         iraf.imdel('gS{}*.fits'.format(year_obs))
 
+    answer = raw_input("MC Bias done. Would you like to continue to proceed with Master Flats? (y/n): ")
+    if answer in ['y','yes']:
+        pass
+    else:
+        raise ValueError("Stopping process because user said so.")
 
     print (" --Creating Twilight Imaging Flat-Field MasterCal--")
     # Select flats obtained contemporaneously with the observations.
@@ -266,11 +274,20 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
         mcName = 'MCflat_%s.fits' % (f)
         flatFiles = fs.fileListQuery(dbFile, fs.createQuery('twiFlat', qd), qd)
         if len(flatFiles) > 0:
-            gmos.giflat(','.join(str(x) for x in flatFiles), mcName,
-                        bias='MCbias', **flatFlags)
+            files_all = ','.join(str(x) for x in flatFiles)
+            # import pdb; pdb.set_trace()
+            gmos.giflat(files_all, mcName, bias='MCbias', **flatFlags)
 
     if clean_files:
-        iraf.imdel('gS{}*.fits,rgS{}*.fits'.format(year_obs, year_obs))
+        #
+        #iraf.imdel('gS{}*.fits,rgS{}*.fits'.format(year_obs, year_obs))
+        pass
+
+    answer = raw_input("MC Flats done. Would you like to continue to proceed with processing Science Images? (y/n): ")
+    if answer in ['y','yes']:
+        pass
+    else:
+        raise ValueError("Stopping process because user said so.")
 
     print ("=== Processing Science Images ===")
     # Remove restriction on date range
@@ -288,13 +305,24 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
         sciFiles = fs.fileListQuery(dbFile, fs.createQuery('sciImg', qd), qd)
         if len(sciFiles) > 0:
             # Make sure BPM table is in sciFlags for employing the imaging Static BPM for this set of detectors.
-            gmos.gireduce(','.join(str(x) for x in sciFiles), bias='MCbias',
-                          flat1=flatFile, **sciFlags)
+            # import pdb; pdb.set_trace()
+            all_files = ','.join(str(x) for x in sciFiles)
+            gmos.gireduce(all_files, bias='MCbias', flat1=flatFile, **sciFlags)
             for file in sciFiles:
                 gmos.gmosaic(prefix + file, **mosaicFlags)
+        else:
+            print("No Science images found for filter {}. Check database.".format(f))
+            import pdb; pdb.set_trace()
 
     if clean_files:
         iraf.imdelete('gS{}*.fits,rgS{}*.fits'.format(year_obs,year_obs))
+
+
+    answer = raw_input("Science Images done. Would you like to continue to proceed with image co-addition? (y/n): ")
+    if answer in ['y','yes']:
+        pass
+    else:
+        raise ValueError("Stopping process because user said so.")
 
     ## Co-add the images, per position and filter.
     print (" -- Begin image co-addition --")
@@ -310,8 +338,11 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
             print "  - Co-addding science images for position: %s" % (t)
             outImage = t + '_' + f + '.fits'
             coAddFiles = fs.fileListQuery(dbFile, fs.createQuery('sciImg', qd), qd)
-            gemtools.imcoadd(','.join(prefix + str(x) for x in coAddFiles),
-                             outimage=outImage, **coaddFlags)
+            all_files = ','.join(prefix + str(x) for x in coAddFiles)
+            if all_files == '':
+                print('No files available for co-addition...')
+                import pdb; pdb.set_trace()
+            gemtools.imcoadd(all_files, outimage=outImage, **coaddFlags)
 
     if clean_files:
         iraf.delete("*_trn*,*_pos,*_cen")

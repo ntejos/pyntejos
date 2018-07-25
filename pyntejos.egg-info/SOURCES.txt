@@ -21,3 +21,8 @@ pyntejos.egg-info/PKG-INFO
 pyntejos.egg-info/SOURCES.txt
 pyntejos.egg-info/dependency_links.txt
 pyntejos.egg-info/top_level.txt
+pyntejos/gmos/__init__.py
+pyntejos/gmos/fileSelect.py
+pyntejos/gmos/gmos_img_proc.py
+pyntejos/gmos/gmos_ls_proc.py
+pyntejos/gmos/obslog.py
