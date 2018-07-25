@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 #    2016-Jun-08  shaw@noao.edu
-# Modified by ntejos to make it a script
+# Modified by ntejos to make it a more flexible script
 
 import sys
 from pyraf import iraf
