@@ -265,8 +265,8 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
         sciFlags = {'fl_over': 'yes', 'fl_trim': 'yes', 'fl_bias': 'yes', 'fl_gscrrej': 'no','fl_dark': 'no', 'fl_flat': 'yes', 'fl_gmosaic': 'yes', 'fl_fixpix': 'no', 'fl_gsappwave': 'yes', 'fl_oversize': 'no', 'fl_vardq': 'yes', 'fl_fulldq': 'yes', 'rawpath': './raw', 'fl_inter': 'no', 'logfile': 'gsreduceLog.txt', 'verbose': 'no'},
         waveFlags = {'coordlist': 'gmos$data/CuAr_GMOS.dat', 'fwidth': 6, 'nsum': 50, 'function': 'chebyshev', 'order': 5, 'fl_inter': 'no', 'logfile': 'gswaveLog.txt', 'verbose': 'no'},
         sciCombFlags = {'combine': 'average', 'reject': 'ccdclip', 'fl_vardq': 'yes', 'fl_dqprop': 'yes', 'logfile': 'gemcombineLog.txt', 'verbose': 'no'},
-        skyFlags = {'fl_oversize': 'no', 'fl_vardq': 'yes', 'logfile': 'gsskysubLog.txt'},
         transFlags={'fl_vardq': 'yes', 'interptype': 'linear', 'fl_flux': 'yes', 'logfile': 'gstransLog.txt'},
+        skyFlags={'fl_oversize': 'no', 'fl_vardq': 'yes', 'logfile': 'gsskysubLog.txt'},
         clean_files=False):
 
     """
@@ -300,14 +300,15 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
     sciCombFlags : dict
         Dictionary for the keyword flags of gemtools.gemcombine() function
         Based on these flags a set of stdCombFlags dictionary will be created for the standard advanced processing.
-    skyFlags : dict
-
-          'fl_oversize': 'no', 'fl_vardq': 'yes', 'logfile': 'gsskysubLog.txt'
-    }
 
     transFlags : dict
         Dictionary for the keyword flags of gmos.gstransform() function.
         xxx
+
+    skyFlags : dict
+        Dictionary for the keyword flags of gmos.gsskysub() function
+
+
 
     Returns
     -------
@@ -439,9 +440,18 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
 
     # The sky regions should be selected with care, using e.g. prows/pcols:
     #   pcols ("tAM2306b.fits[SCI]", 1100, 2040, wy1=40, wy2=320)
+    print("The sky regions should be selected with care, using e.g. with prows/pcols (see tutorial).")
+    answer = raw_input("Please provide the long_sample string to apply to gmos.gsskysub() for the standard."
+                       "e.g. '20:70,190:230'. Say 'no' for using the default values.")
+    if answer in ['n', 'no']:
+        print("Using default long_sample values '20:70,190:230'")
+        long_sample_std = '20:70,190:230'
+    else:
+        long_sample_std = answer
 
+
+    skyFlags = skyFlags
     gmos.gsskysub.unlearn()
-
 
     # Process the Standard Star
     prefix = "gs"
@@ -450,8 +460,10 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
     gemtools.gemcombine(','.join(prefix + str(x) for x in stdFiles),
                         'LTT9239', **stdCombFlags)
     gmos.gstransform('LTT9239', wavtraname='gsS20070623S0109', **transFlags)
-    gmos.gsskysub('tLTT9239', long_sample='20:70,190:230')
+    gmos.gsskysub('tLTT9239', long_sample=long_sample_std)
 
+
+    stop
     print (" -- Extract Std spectrum --")
     # Extract the std spectruma using a large aperture.
     # It's important to trace the spectra interactively.
