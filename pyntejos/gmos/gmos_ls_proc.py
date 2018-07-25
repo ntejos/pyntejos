@@ -441,13 +441,16 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
     # The sky regions should be selected with care, using e.g. prows/pcols:
     #   pcols ("tAM2306b.fits[SCI]", 1100, 2040, wy1=40, wy2=320)
     print("The sky regions should be selected with care, using e.g. with prows/pcols (see tutorial).")
-    answer = raw_input("Please provide the long_sample string to apply to gmos.gsskysub() for the standard."
-                       "e.g. '20:70,190:230'. Say 'no' for using the default values.")
+    answer = raw_input("Please provide the long_sample string to apply to gmos.gsskysub() for the standard star."
+                       "e.g. '20:70,190:230'. Say 'no' for using the example as the default values.")
     if answer in ['n', 'no']:
         print("Using default long_sample values '20:70,190:230'")
         long_sample_std = '20:70,190:230'
     else:
         long_sample_std = answer
+
+    ask_user("Before proceeding it is important that you have set a good sky region for the standard.\n"
+             "Thus far you have selected: {}\n Would you like to proceed with the current one? (y/n): ".format(long_sample_std), ['yes','y'])
 
 
     skyFlags = skyFlags
