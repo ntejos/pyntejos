@@ -321,7 +321,7 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
 
     # From the work_directory:
     # Create the query dictionary of essential parameter=value pairs for Full and CenSp RoIs
-    qd = {'Full': qd_full, 'CenSp' = qd_censp}
+    qd = {'Full': qd_full, 'CenSp': qd_censp}
 
     print (" --Creating Bias MasterCal--")
 
