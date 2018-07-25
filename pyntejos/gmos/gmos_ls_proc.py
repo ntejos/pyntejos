@@ -263,7 +263,6 @@ def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
 
                 clean_files=False):
     """
-
     Parameters
     ----------
     dbFile : str
@@ -325,6 +324,11 @@ def gmos_ls_proc(dbFile='./raw/obsLog.sqlite3',
     gmos.gsflat.unlearn()
     # Normalize the spectral flats per CCD.
     # The response fitting should be done interactively.
+    if flatFlags['fl_inter'] != 'yes':
+        print("The response fitting should be done interactively. Please set flatFlags['fl_inter'] = 'yes'.")
+        ask_user
+        raise ValueError('The response fitting should be done interactively.')
+
     flatFlags = {
         'fl_over': 'yes', 'fl_trim': 'yes', 'fl_bias': 'yes', 'fl_dark': 'no',
         'fl_fixpix': 'no', 'fl_oversize': 'no', 'fl_vardq': 'yes', 'fl_fulldq': 'yes',
