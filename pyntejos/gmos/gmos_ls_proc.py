@@ -338,6 +338,7 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
         # The str.join() funciton is needed to transform a python list into a
         # comma-separated string of file names that IRAF can understand.
         if len(biasFiles) > 1:
+            # import pdb; pdb.set_trace()
             gmos.gbias(','.join(str(x) for x in biasFiles), 'MCbias' + r,
                        **biasFlags)
 
