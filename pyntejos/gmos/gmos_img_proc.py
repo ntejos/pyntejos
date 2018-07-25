@@ -294,9 +294,7 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
             gmos.giflat(files_all, mcName, bias='MCbias', **flatFlags)
 
     if clean_files:
-        #
-        #iraf.imdel('gS{}*.fits,rgS{}*.fits'.format(year_obs, year_obs))
-        pass
+        iraf.imdel('gS{}*.fits,rgS{}*.fits'.format(year_obs, year_obs))
 
     ask_user("MC Flats done. Would you like to continue to proceed with processing Science Images? (y/n): ", ['yes','y'])
 
@@ -313,7 +311,8 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
         print "    Processing science images for filter: %s" % (f)
         qd['Filter2'] = f + '_G%'
         flatFile = 'MCflat_' + f + '.fits'
-        sciFiles = fs.fileListQuery(dbFile, fs.createQuery('sciImg', qd), qd)
+        SQL = fs.createQuery('sciImg', qd)
+        sciFiles = fs.fileListQuery(dbFile, SQL, qd)
         if len(sciFiles) > 0:
             # Make sure BPM table is in sciFlags for employing the imaging Static BPM for this set of detectors.
             # import pdb; pdb.set_trace()
@@ -346,11 +345,11 @@ def gmos_img_proc2(dbFile="./raw/obsLog.sqlite3", qd={'use_me': 1,'Instrument': 
             coAddFiles = fs.fileListQuery(dbFile, fs.createQuery('sciImg', qd), qd)
             all_files = ','.join(prefix + str(x) for x in coAddFiles)
             if all_files == '':
-                print('No files available for co-addition...')
+                print('No files available for co-addition. Check that the target names are written correctly.')
                 import pdb; pdb.set_trace()
             gemtools.imcoadd(all_files, outimage=outImage, **coaddFlags)
 
-    ask_user("Co-addition done. Would you like to clean intermediate reduction files? (y/n): ", ['y','yes'])
+    ask_user("Co-addition done. Would you like to clean the latest intermediate reduction files? (y/n): ", ['y','yes'])
 
     if clean_files:
         iraf.delete("*_trn*,*_pos,*_cen")
