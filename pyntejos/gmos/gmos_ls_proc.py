@@ -3,6 +3,7 @@
 # Modified by ntejos to make it a more flexible script
 
 import sys
+import os
 import copy
 from pyraf import iraf
 from pyraf.iraf import gemini, gemtools, gmos, onedspec
@@ -257,7 +258,10 @@ if 0:
     print ("=== Finished Calibration Processing ===")
 
 
-def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
+def gmos_ls_proc2(
+        sciTargets,
+        stdTarget,
+        dbFile='./raw/obsLog.sqlite3',
         qd_full={'use_me': 1, 'Instrument': 'GMOS-S', 'CcdBin': '2 4', 'RoI': 'Full', 'Disperser': 'B600+_%', 'CentWave': 485.0, 'AperMask': '1.0arcsec', 'Object': 'AM2306-72%','DateObs': '2007-06-05:2007-07-07'},
         qd_censp={'use_me': 1, 'Instrument': 'GMOS-S', 'CcdBin': '2 4', 'RoI': 'CenSp', 'Disperser': 'B600+_%', 'CentWave': 485.0, 'AperMask': '1.0arcsec', 'Object': 'LTT9239','DateObs': '2007-06-05:2007-07-07'},
         biasFlags={'logfile': 'biasLog.txt', 'rawpath': './raw/', 'fl_vardq': 'yes', 'verbose': 'no'},
@@ -267,6 +271,7 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
         sciCombFlags = {'combine': 'average', 'reject': 'ccdclip', 'fl_vardq': 'yes', 'fl_dqprop': 'yes', 'logfile': 'gemcombineLog.txt', 'verbose': 'no'},
         transFlags={'fl_vardq': 'yes', 'interptype': 'linear', 'fl_flux': 'yes', 'logfile': 'gstransLog.txt'},
         skyFlags={'fl_oversize': 'no', 'fl_vardq': 'yes', 'logfile': 'gsskysubLog.txt'},
+        skip_wavecal=True,
         clean_files=False):
 
     """
@@ -276,6 +281,18 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
         Filename containing the SQL sqlite3 database created by obslog.py
         It must be placed in the ./raw/ directory
         Default is `./raw/obsLog.sqlite3`
+
+    sciTargets : dict
+        Dictionary with the associations of science targets and its associated ARC for wavelength calibration
+        as well as the regions defining the sky along the slit.
+        e.g. sciTargetd = {'AM2306-721_a': {'arc': 'gsS20070623S0071', 'sky': '520:720'},
+                           'AM2306-72_b': {'arc': 'gsS20070623S0081', 'sky': '670:760,920:1020'}}
+        Note that there could be more than one target defined this way.
+
+    stdTarget : dict
+        Dictionary with the associations of standard star targets and its associated ARC for wavelength calibration
+        as well as the regions defining the sky along the slit.
+        e.g. stdTarget = {'LTT1788': {'arc': 'S20180711S0281', 'sky': '170:380,920:1080'}}
 
     qd_full : dictionary
         Query Dictionary of essential parameter=value pairs for Full RoI. Meant for science object.
@@ -308,6 +325,9 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
     skyFlags : dict
         Dictionary for the keyword flags of gmos.gsskysub() function
 
+    skip_wavecal : bool
+        Whether to skip interactive wavelength calibration.
+        Useful when this is already done.
 
 
     Returns
@@ -338,13 +358,15 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
         # The str.join() funciton is needed to transform a python list into a
         # comma-separated string of file names that IRAF can understand.
         if len(biasFiles) > 1:
+            # NT comment: sometimes if there are too many files, gmos.gbias() raises an error.
             # import pdb; pdb.set_trace()
             gmos.gbias(','.join(str(x) for x in biasFiles), 'MCbias' + r,
                        **biasFlags)
 
     # Clean up
+    year_obs = qd_full['DateObs'].split('-')[0]
     if clean_files:
-        iraf.imdel("gS2007*.fits")
+        iraf.imdel("gS{}*.fits".format(year_obs))
 
     ask_user("MC Bias done. Would you like to continue to proceed with GCAL Spectral Master Flats? (y/n): ",['y','yes'])
 
@@ -368,7 +390,7 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
                         bias='MCbias' + r, **flatFlags)
 
     if clean_files:
-        iraf.imdel('gS2007*.fits,gsS2007*.fits')
+        iraf.imdel('gS{}*.fits,gsS{}*.fits'.format(year_obs, year_obs))
 
     ask_user("GCAL Spectral Flat-Field MasterCals done. Would you like to continue to proceed with Basic Processing? (y/n): ",['y','yes'])
 
@@ -407,7 +429,7 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
 
     # Clean up
     if clean_files:
-        iraf.imdel('gS2007*.fits')
+        iraf.imdel('gS{}*.fits'.format(year_obs))
 
     ask_user("Basic processing done. Would you like to continue to determine wavelength calibration? (y/n): ",['y','yes'])
 
@@ -422,10 +444,29 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
         ask_user("Do you still want to proceed despite this important warning? (y/n): ", ['yes','y'])
 
     # Need to select specific wavecals to match science exposures.
-    # NT TODO: get these as extra parameters of the main call
-    prefix = 'gsS20070623S0'
-    for arc in ['071', '081', '091', '109']:
-        gmos.gswavelength(prefix + arc, **waveFlags)
+    # NT: we do this now from the sciTargets + stdTarget input dictionaries
+    # e.g.
+        '''
+        sciTargets = {
+        'AM2306-721_a': {'arc': 'gsS20070623S0071', 'sky': '520:720'},
+        'AM2306-72_b': {'arc': 'gsS20070623S0081', 'sky': '670:760,920:1020'},
+        'AM2306-721_c': {'arc': 'gsS20070623S0091', 'sky': '170:380,920:1080'}
+        }
+        '''
+    #prefix = 'gsS20070623S0'
+    #for arc in ['071', '081', '091', '109']:
+    #    gmos.gswavelength(prefix + arc, **waveFlags)
+    prefix = 'gs'
+    arc_files = []
+    for key in sciTargets.keys():
+        arc_files += [sciTargets[key]['arc']]
+    for key in stdTarget.keys():
+        arc_files += [stdTarget[key]['arc']]
+    # import pdb; pdb.set_trace()
+    if skip_wavecal is not True:
+        for arc in arc_files:
+            gmos.gswavelength(prefix + arc, **waveFlags)
+
 
     ### End of basic processing. Continue with advanced processing.
     ask_user("Wavelength solution done. Would you like to continue with advanced processing? (y/n): ",['y','yes'])
@@ -439,14 +480,32 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
     stdCombFlags.update({'fl_vardq': 'no', 'fl_dqprop': 'no'})
     gmos.gstransform.unlearn()
 
+    # apply gtransform to standard
+    # Process the Standard Star
+    prefix = "gs"
+    qs = qd['CenSp']
+    stdFiles = fs.fileListQuery(dbFile, fs.createQuery('std', qs), qs)
+    std_name = stdTarget.keys()[0]
+    if len(stdFiles) == 0:
+        ValueError("No standard star associated. Please check parameters of search (e.g. RoI=CentSp)")
+    import pdb; pdb.set_trace()
+    if len(stdFiles) > 1:
+        # import pdb; pdb.set_trace()
+        gemtools.gemcombine(','.join(prefix + str(x) for x in stdFiles),
+                                std_name, **stdCombFlags)
+    else:
+        os.system("cp {}.fits {}.fits".format(prefix + stdFiles[0], std_name))
+
+    gmos.gstransform(std_name, wavtraname=prefix + stdTarget[std_name]['arc'], **transFlags)
+
     # The sky regions should be selected with care, using e.g. prows/pcols:
     #   pcols ("tAM2306b.fits[SCI]", 1100, 2040, wy1=40, wy2=320)
     print("The sky regions should be selected with care, using e.g. with prows/pcols (see tutorial).")
     answer = raw_input("Please provide the long_sample string to apply to gmos.gsskysub() for the standard star."
                        "e.g. '20:70,190:230'. Say 'no' for using the example as the default values.")
     if answer in ['n', 'no']:
-        print("Using default long_sample values '20:70,190:230'")
-        long_sample_std = '20:70,190:230'
+        print("Using default long_sample set by stdTarget values {}.".format(stdTarget[std_name]['sky']))
+        long_sample_std = stdTarget[std_name]['sky']
     else:
         long_sample_std = answer
 
@@ -454,34 +513,27 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
              "Thus far you have selected: {}\n Would you like to proceed with the current one? (y/n): ".format(long_sample_std), ['yes','y'])
 
 
+    # apply sky substraction
     skyFlags = skyFlags
     gmos.gsskysub.unlearn()
+    gmos.gsskysub('t{}'.format(std_name), long_sample=long_sample_std)
 
-    # Process the Standard Star
-    prefix = "gs"
-    qs = qd['CenSp']
-    stdFiles = fs.fileListQuery(dbFile, fs.createQuery('std', qs), qs)
-    gemtools.gemcombine(','.join(prefix + str(x) for x in stdFiles),
-                        'LTT9239', **stdCombFlags)
-    gmos.gstransform('LTT9239', wavtraname='gsS20070623S0109', **transFlags)
-    gmos.gsskysub('tLTT9239', long_sample=long_sample_std)
-
-
-    stop
     # NT: make sure the process works ok until here before proceeding further. i.e. setting the sky region manually and correctly.
+    # NT: seems to be working.
 
     print (" -- Extract Std spectrum --")
-    # Extract the std spectruma using a large aperture.
+    # Extract the std spectrum using a large aperture.
     # It's important to trace the spectra interactively.
     gmos.gsextract.unlearn()
     extrFlags = {
-        'apwidth': 3., 'fl_inter': 'no', 'find': 'yes',
+        'apwidth': 3., 'fl_inter': 'yes', 'find': 'yes',
         'trace': 'yes', 'tfunction': 'chebyshev', 'torder': '6', 'tnsum': 20,
         'background': 'fit', 'bfunction': 'chebyshev', 'border': 2,
         'fl_vardq': 'no', 'logfile': 'gsextrLog.txt'
     }
-    gmos.gsextract("stLTT9239", **extrFlags)
+    gmos.gsextract("st" + std_name, **extrFlags)
 
+    stop
     print (" -- Derive the Flux calibration --")
     gmos.gsstandard.unlearn()
     sensFlags = {
@@ -511,7 +563,7 @@ def gmos_ls_proc2(dbFile='./raw/obsLog.sqlite3',
 
     # Clean up
     if clean_files:
-        iraf.imdel("gsS2007*.fits")
+        iraf.imdel("gsS{}*.fits".format(year_obs))
 
     ## Apply the sensitivity function.
     gmos.gscalibrate.unlearn()
