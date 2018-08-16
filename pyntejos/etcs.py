@@ -12,9 +12,9 @@ def data_path(filename):
 
 def s2n_COS(t, FUV, tnorm=1000):
     # load cos etc simulations for flat spectrum 1000s exp, and FUV = 17 mag
-    data_path('cos_etc_g130m_v25.1.1.csv')
-    cos_g130m = ascii.read(data_path('cos_etc_g130m_v25.1.1.csv'))
-    cos_g160m = ascii.read(data_path('cos_etc_g160m_v25.1.1.csv'))
+    data_path('cos_etc_g130m_v26.1.csv')
+    cos_g130m = ascii.read(data_path('cos_etc_g130m_v26.1.csv'))
+    cos_g160m = ascii.read(data_path('cos_etc_g160m_v26.1.csv'))
     #separate them at ~1450 A
     cond = cos_g130m['wavelength'] < 1450
     cos_g130m = cos_g130m[cond]

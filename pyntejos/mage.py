@@ -85,7 +85,7 @@ def create_ref_hdulist(reference_muse_file, reference_mage_file, params):
     if params['POS_ANGLE'] != "None":
         pr_hdr['POS_ANGLE'] = params['POS_ANGLE']
     else: # get it from mage header
-        pr_hdr['POS_ANGLE'] = hdulist_mage[0].header['ROTANGLE'] - 44.5
+        pr_hdr['POS_ANGLE'] = hdulist_mage[0].header['ROTANGLE'] - 44.5  # this is the current offset in angle
     pr_hdr['PIXSCALE_X'] = params['PIXSCALE_X']
     pr_hdr['PIXSCALE_Y'] = params['PIXSCALE_Y']
 
@@ -203,13 +203,19 @@ def make_MagE_cube(config_file):
         # MAKE SURE THE SPECTRA IS PROPERLY SORTED
         nfile = fn.split('.')[0].split('_')[-1]
         nfile = int(nfile)
-        assert nfile == ii +1, "The files in the directory are not sorted properly. Please check."
+        assert nfile == ii + 1, "The files in the directory are not sorted properly. Please check."
         try:
             spec = read_single_mage_file(fname)
+
+            if 0: # dummy
+                spec.flux = 1
+                spec.sig = 0
             cube[:,ii,0] = spec.flux.value
             stat[:,ii,0] = spec.sig.value
             # model[:,ii,0] = model_sp.flux.value
         except:
+            print("Something is wrong with spectrum {}".format(fname.split('/')[-1]))
+            import pdb; pdb.set_trace()
             raise ValueError("Something is wrong with spectrum {}".format(fname.split('/')[-1]))
 
     # get the reference hdulist

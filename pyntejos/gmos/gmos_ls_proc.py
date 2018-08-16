@@ -271,6 +271,8 @@ def gmos_ls_proc2(
         sciCombFlags = {'combine': 'average', 'reject': 'ccdclip', 'fl_vardq': 'yes', 'fl_dqprop': 'yes', 'logfile': 'gemcombineLog.txt', 'verbose': 'no'},
         transFlags={'fl_vardq': 'yes', 'interptype': 'linear', 'fl_flux': 'yes', 'logfile': 'gstransLog.txt'},
         skyFlags={'fl_oversize': 'no', 'fl_vardq': 'yes', 'logfile': 'gsskysubLog.txt'},
+        extrFlags = {'apwidth': 3., 'fl_inter': 'yes', 'find': 'yes','trace': 'yes', 'tfunction': 'chebyshev', 'torder': '6', 'tnsum': 20, 'background': 'fit', 'bfunction': 'chebyshev', 'border': 2, 'fl_vardq': 'no', 'logfile': 'gsextrLog.txt'},
+        calibFlags = {'extinction': 'onedstds$ctioextinct.dat', 'fl_ext': 'yes', 'fl_scale': 'no','sfunction': 'sens', 'fl_vardq': 'yes', 'logfile': 'gscalibrateLog.txt'},
         skip_wavecal=True,
         clean_files=False):
 
@@ -324,6 +326,12 @@ def gmos_ls_proc2(
 
     skyFlags : dict
         Dictionary for the keyword flags of gmos.gsskysub() function
+
+    extrFlags : dict
+        Dictionary for the keywords flags of gmos.gsextract() function
+
+    calibFlags : dict
+        XXX
 
     skip_wavecal : bool
         Whether to skip interactive wavelength calibration.
@@ -488,7 +496,7 @@ def gmos_ls_proc2(
     std_name = stdTarget.keys()[0]
     if len(stdFiles) == 0:
         ValueError("No standard star associated. Please check parameters of search (e.g. RoI=CentSp)")
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     if len(stdFiles) > 1:
         # import pdb; pdb.set_trace()
         gemtools.gemcombine(','.join(prefix + str(x) for x in stdFiles),
@@ -501,14 +509,16 @@ def gmos_ls_proc2(
     # The sky regions should be selected with care, using e.g. prows/pcols:
     #   pcols ("tAM2306b.fits[SCI]", 1100, 2040, wy1=40, wy2=320)
     print("The sky regions should be selected with care, using e.g. with prows/pcols (see tutorial).")
+    '''
     answer = raw_input("Please provide the long_sample string to apply to gmos.gsskysub() for the standard star."
-                       "e.g. '20:70,190:230'. Say 'no' for using the example as the default values.")
+                       "e.g. '20:70,190:230' (say 'no' for using the example as the default values): ")
     if answer in ['n', 'no']:
         print("Using default long_sample set by stdTarget values {}.".format(stdTarget[std_name]['sky']))
         long_sample_std = stdTarget[std_name]['sky']
     else:
         long_sample_std = answer
-
+    '''
+    long_sample_std = stdTarget[std_name]['sky']
     ask_user("Before proceeding it is important that you have set a good sky region for the standard.\n"
              "Thus far you have selected: {}\n Would you like to proceed with the current one? (y/n): ".format(long_sample_std), ['yes','y'])
 
@@ -525,62 +535,77 @@ def gmos_ls_proc2(
     # Extract the std spectrum using a large aperture.
     # It's important to trace the spectra interactively.
     gmos.gsextract.unlearn()
-    extrFlags = {
-        'apwidth': 3., 'fl_inter': 'yes', 'find': 'yes',
-        'trace': 'yes', 'tfunction': 'chebyshev', 'torder': '6', 'tnsum': 20,
-        'background': 'fit', 'bfunction': 'chebyshev', 'border': 2,
-        'fl_vardq': 'no', 'logfile': 'gsextrLog.txt'
-    }
+
     gmos.gsextract("st" + std_name, **extrFlags)
 
-    stop
+
     print (" -- Derive the Flux calibration --")
     gmos.gsstandard.unlearn()
     sensFlags = {
-        'fl_inter': 'yes', 'starname': 'l9239', 'caldir': 'onedstds$ctionewcal/',
+        'fl_inter': 'no', 'starname': 'XXX', 'caldir': 'onedstds$ctionewcal/',
         'observatory': 'Gemini-South', 'extinction': 'onedstds$ctioextinct.dat',
         'function': 'chebyshev', 'order': 9, 'verbose': 'no', 'logfile': 'gsstdLog.txt'
     }
-    gmos.gsstandard('estLTT9239', sfile='std.txt', sfunction='sens', **sensFlags)
+    sensFlags['starname'] = stdTarget[std_name]['iraf_name']
+
+    gmos.gsstandard('est'+std_name, sfile='std.txt', sfunction='sens', **sensFlags)
+
+    ask_user("Sensitivity function from standard star done. Would you like to continue with reduction of science"
+             " exposures? (y/n): ",['yes','y'])
 
     # Process the science targets.
     # Use a dictionary to associate science targets with Arcs and sky regions.
-    sciTargets = {
-        'AM2306-721_a': {'arc': 'gsS20070623S0071', 'sky': '520:720'},
-        'AM2306-72_b': {'arc': 'gsS20070623S0081', 'sky': '670:760,920:1020'},
-        'AM2306-721_c': {'arc': 'gsS20070623S0091', 'sky': '170:380,920:1080'}
-    }
+
+    prefix = 'gs'
+    extract_individuals = False
     for targ, p in sciTargets.iteritems():
         qs = qd['Full']
-        qs['Object'] = targ
+        qs['Object'] = p['name']
         # Fix up the target name for the output file
-        sciOut = targ.split('-')[0] + targ[-1]
+        sciOut = p['name_out']
         sciFiles = fs.fileListQuery(dbFile, fs.createQuery('sciSpec', qs), qs)
-        gemtools.gemcombine(','.join(prefix + str(x) for x in sciFiles),
-                            sciOut, **sciCombFlags)
-        gmos.gstransform(sciOut, wavtraname=p['arc'], **transFlags)
+        all_files = ','.join(prefix + str(x) for x in sciFiles)
+        gemtools.gemcombine(all_files, sciOut, **sciCombFlags)
+        gmos.gstransform(sciOut, wavtraname=prefix + p['arc'], **transFlags)
+        ask_user("It is important to select a good sky region for substraction. Thus far you have selected {}"
+                 " based on the sciTargets input dictionary. Would you like to continue? (y/n): ".format(p['sky']),['y','yes'])
         gmos.gsskysub('t' + sciOut, long_sample=p['sky'], **skyFlags)
-
+        if extract_individuals:
+            import pdb; pdb.set_trace()
+            for fname in sciFiles:
+                gmos.gstransform(prefix + fname, wavtraname=prefix + p['arc'], **transFlags)
+                gmos.gsskysub('t' + prefix + fname, long_sample=p['sky'], **skyFlags)
+                gmos.gscalibrate.unlearn()
+                gmos.gscalibrate('st'+prefix+fname, **calibFlags)
     # Clean up
     if clean_files:
         iraf.imdel("gsS{}*.fits".format(year_obs))
 
+    ask_user("Sky substraction done. Would you like to continue to apply sensitivity function? (y/n): ",['y'])
+
     ## Apply the sensitivity function.
     gmos.gscalibrate.unlearn()
-    calibFlags = {
-        'extinction': 'onedstds$ctioextinct.dat', 'fl_ext': 'yes', 'fl_scale': 'no',
-        'sfunction': 'sens', 'fl_vardq': 'yes', 'logfile': 'gscalibrateLog.txt'
-    }
-    gmos.gscalibrate('stAM2306*', **calibFlags)
+
+
+    gmos.gscalibrate('st'+sciOut+'*', **calibFlags)
     calibFlags.update({'fl_vardq': 'no'})
-    gmos.gscalibrate('estLTT9239', **calibFlags)
+    gmos.gscalibrate('est'+std_name, **calibFlags)
 
     print (" -- Extract Target Spectra --")
-    onedspec.nsum = 4
-    onedspec.sarith('cstAM2306b.fits[SCI]', 'copy', '', 'ecstAM2306b.ms',
+    method = 'gsextract'
+    if method == 'gsextract':
+        gmos.gsextract.unlearn()
+        # import pdb;pdb.set_trace()
+        gmos.gsextract("cst" + sciOut, **extrFlags)
+
+    elif method == 'sarith':
+        # not implemented yet
+        onedspec.nsum = 4
+        onedspec.sarith('cst{}.fits[SCI]'.format(sciOut), 'copy', '', 'ecst{}.ms'.format(sciOut),
                     apertures='222-346x4')
 
     print ("=== Finished Calibration Processing ===")
 
 if __name__ == "__main__":
     gmos_ls_proc2()
+
