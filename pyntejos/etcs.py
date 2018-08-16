@@ -16,9 +16,9 @@ def s2n_COS(t, FUV, tnorm=1000):
     cos_g130m = ascii.read(data_path('cos_etc_g130m_v26.1.csv'))
     cos_g160m = ascii.read(data_path('cos_etc_g160m_v26.1.csv'))
     #separate them at ~1450 A
-    cond = cos_g130m['wavelength'] < 1450
+    cond = cos_g130m['wavelength'] < 1440
     cos_g130m = cos_g130m[cond]
-    cond = cos_g160m['wavelength'] >= 1450
+    cond = cos_g160m['wavelength'] >= 1440
     cos_g160m = cos_g160m[cond]
     # merge both
     cos = vstack([cos_g130m, cos_g160m], join_type='exact')
