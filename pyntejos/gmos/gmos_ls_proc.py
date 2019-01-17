@@ -546,7 +546,7 @@ def gmos_ls_proc2(
         'observatory': 'Gemini-South', 'extinction': 'onedstds$ctioextinct.dat',
         'function': 'chebyshev', 'order': 9, 'verbose': 'no', 'logfile': 'gsstdLog.txt'
     }
-    sensFlags['starname'] = stdTarget[std_name]['iraf_name']
+    sensFlags['starname'] = stdTarget[std_name]['iraf_name']  # replace corresponding starname
 
     gmos.gsstandard('est'+std_name, sfile='std.txt', sfunction='sens', **sensFlags)
 
@@ -557,7 +557,7 @@ def gmos_ls_proc2(
     # Use a dictionary to associate science targets with Arcs and sky regions.
 
     prefix = 'gs'
-    extract_individuals = False
+    extract_individuals = True
     for targ, p in sciTargets.iteritems():
         qs = qd['Full']
         qs['Object'] = p['name']

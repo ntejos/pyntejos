@@ -26,3 +26,5 @@ pyntejos/gmos/fileSelect.py
 pyntejos/gmos/gmos_img_proc.py
 pyntejos/gmos/gmos_ls_proc.py
 pyntejos/gmos/obslog.py
+pyntejos/gmos/reduce_longslit_by_elizabeth.py
+pyntejos/gmos/utils.py
