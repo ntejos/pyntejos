@@ -383,7 +383,10 @@ def from_igmguesses_to_complist(infile):
         # QtCore.pyqtRemoveInputHook()
         # pdb.set_trace()
         # QtCore.pyqtRestoreInputHook()
-        comp = AbsComponent.from_dict(igmg_dict['cmps'][key], chk_sep=False, chk_data=False, chk_vel=False)
+        # import pdb; pdb.set_trace()
+        idict = igmg_dict['cmps'][key]
+        idict['logN'] = idict['attrib']['logN']
+        comp = AbsComponent.from_dict(idict, skip_abslines=False, chk_sep=False, chk_data=False, chk_vel=False)
         comp_list += [comp]
     return comp_list
 
