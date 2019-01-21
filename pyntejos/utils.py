@@ -386,6 +386,16 @@ def from_igmguesses_to_complist(infile):
         # import pdb; pdb.set_trace()
         idict = igmg_dict['cmps'][key]
         idict['logN'] = idict['attrib']['logN']
+        try:
+            idict['flag_N'] = idict['attrib']['flag_N']
+        except:
+            idict['flag_N'] = 0.
+        try:
+            idict['sig_logN'] = idict['attrib']['sig_logN']
+        except:
+            idict['sig_logN'] = 0.
+
+
         comp = AbsComponent.from_dict(idict, skip_abslines=False, chk_sep=False, chk_data=False, chk_vel=False)
         comp_list += [comp]
     return comp_list
