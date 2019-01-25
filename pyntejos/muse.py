@@ -40,3 +40,47 @@ def make_empty_cube(radec_center, pixscale, nside, wave_coord):
     data = np.zeros((nw, ntot, ntot))
     cube = Cube(wcs=wcs, data=data, wave=wave_coord)
     return cube
+
+
+def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False):
+    """
+    Substracts spectral continuum to a cube spaxels per spaxel
+
+    Parameters
+    ----------
+    cube : mpdaj.obj.Cube
+        Cube object
+    order : int
+        Order of the polinomyal to fit the continuum
+        This is fed into mpdaf.obj.Spectrum.poly_spec() method
+    nsig : (float, float)
+        The low and high rejection factor in std units (-3.0,3.0)
+        This is fed into mpdaf.obj.Spectrum.poly_spec()
+    inspect : bool
+        Whether to inspect the continuum fits
+
+    Returns
+    -------
+    cube_nocont : Cube
+        Copy of Cube with continuum substracted
+
+    """
+    cube_new = cube.copy()
+    nw, ny, nx = cube.shape
+    # subtract continuum on every spectrum
+    q = 1
+    for i in range(nx):
+        for j in range(ny):
+            spec = cube_mpdaf[:,j,i]
+            cont = spec.poly_spec(order, nsig=nsig)
+            s = 'Spaxel ({},{}) [{}/{}]'.format(i,j,q,ntot)
+            print(s)
+            if inspect:
+                spec.plot(title=s)
+                cont.plot(color='r', drawstyle='line')
+                plt.show()
+            spec_n = spec.copy()
+            spec_n.data = spec.data - cont.data.data
+            cube_new[:,j,i] = spec_n
+            q += 1
+    return cube_new
