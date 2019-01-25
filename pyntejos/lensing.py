@@ -1,8 +1,9 @@
 import numpy as np
+from mpdaf.obj import Image
 
-"""Utilities for lensing"""
+"""Utilities for lensing de-lensing"""
 
-def ima2abs(ra_deg, dec_deg, arc_name='PSZ1GA311'):
+def ima2abs(ra_deg, dec_deg, arc_name='PSZ1GA311_G1'):
     """ Return de-lensed coordinate for a given arc
     using the corresponding deflection matrix.
     (c) Sebita 2019"""
@@ -17,8 +18,8 @@ def ima2abs(ra_deg, dec_deg, arc_name='PSZ1GA311'):
 
     # lens stuff, deflexion matrices, factor to normalize
     # lensfactor = d_ls/ds(z=0.73) / d_ls/ds(z=2.37)
-    if arc_name == 'PSZ1GA311'
-        lensfactor = 0.4958
+    if arc_name == 'PSZ1GA311_G1':
+        lensfactor = 0.4958 # depends on redshift
         alpha_scale = 8.33333333333333E-06  # scale in deflection matrix
         prefix = '/media/ntejos/disk1/projects/arc_tomo/PSZ1GA311/data/delensing/'
         alpha_x = lensfactor*Image(prefix + 'dplx1_Fel_wcs.fits')

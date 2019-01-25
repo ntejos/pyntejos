@@ -5,7 +5,7 @@ import astropy.units as u
 from mpdaf.obj import Image, Cube, WCS, WaveCoord
 
 
-def get_subecube(inp, xy_center, nside, wv_range=None):
+def get_subcube(inp, xy_center, nside, wv_range=None):
     """
 
     Parameters
@@ -37,13 +37,8 @@ def get_subecube(inp, xy_center, nside, wv_range=None):
     subcube = cube.subcube(yx_center, 2*nside+1, lbda=wv_range,
                            unit_center=unit_center,
                            unit_size=unit_center,
-                           unit_wave=Unit("Angstrom"))
+                           unit_wave=u.Unit("Angstrom"))
     return subcube
-
-
-
-
-
 
 
 def make_empty_cube(radec_center, pixscale, nside, wave_coord):
@@ -125,4 +120,66 @@ def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False):
             cube_new[:,j,i] = spec_n
             q += 1
     return cube_new
+
+
+def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, nside=20, arc_name='PSZ1GA311_G1'):
+    """
+
+    Parameters
+    ----------
+    cube_imag : Cube
+        Cube in the image plane
+
+    arc_name: str
+        Name of arc
+
+    Returns
+    -------
+    cube_abs : Cube
+        Cube resampled into the absorber plane
+
+    """
+    from pyntejos.lensing import ima2abs
+
+    # first loop for establishing the new radec range
+    nw, ny, nx = cube_imag.shape
+    ntot = nx * ny
+    ra_abs = []
+    dec_abs = []
+    specs = []
+    q = 1
+    for x in range(nx):
+        for y in range(ny):
+            dec, ra = cube_imag.wcs.pix2sky((y, x))[0]
+            ra_new, dec_new = ima2abs(ra, dec, arc_name=arc_name)
+            print('Spaxel ({},{}) [{}/{}]'.format(x, y, q, ntot))
+            print("  ra:  {:.6f} --> {:.6f}".format(ra, ra_new))
+            print("  dec: {:.6f} --> {:.6f}".format(dec, dec_new))
+            ra_abs += [ra_new]
+            dec_abs += [dec_new]
+            spec_aux = cube_imag.data[:, y, x].data  # check order (y,x)
+            specs += [spec_aux]
+            q += 1
+
+    # esablish the (ra,dec) center of new cube
+    ra_center = 0.5 * (np.min(ra_abs) + np.max(ra_abs))
+    dec_center = 0.5 * (np.min(dec_abs) + np.max(dec_abs))
+    radec_center = (ra_center, dec_center) * u.deg
+    cube_abs = make_empty_cube(radec_center, pixelscale, nside=nside, wave_coord=cube_imag.wave)
+    # fill in the specs
+    counter = np.zeros_like(cube_abs.data[0].data)
+    for ii, spec in enumerate(specs):
+        # ynew, xnew = cube_abs.wcs.sky2pix((dec_abs[ii],ra_abs[ii]))[0]
+        ynew, xnew = cube_abs.wcs.sky2pix((dec_abs[ii], ra_abs[ii]), nearest=True)[0]
+        cube_abs.data[:, ynew, xnew] += specs[ii]
+        counter[ynew, xnew] += 1
+    # are we loosing information ?
+    if np.max(counter) > 1:
+        cond = counter > 1
+        nbad = np.sum(cond)
+        print(
+        "Warning(NT): there are {}/{} pixels in the abs-plane that have contributions from two or more pixels in the image plane. You should consider reducing the image scale (current = {} arcsec) of the new datacube.".format(
+            nbad, ntot, pixelscale_new.to('arcsec').value))
+    return cube_abs
+
 

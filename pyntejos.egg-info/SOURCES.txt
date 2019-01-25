@@ -8,6 +8,7 @@ pyntejos/coord.py
 pyntejos/etcs.py
 pyntejos/fit.py
 pyntejos/io.py
+pyntejos/lensing.py
 pyntejos/mage.py
 pyntejos/muse.py
 pyntejos/parse.py
