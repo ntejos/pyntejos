@@ -5,6 +5,47 @@ import astropy.units as u
 from mpdaf.obj import Image, Cube, WCS, WaveCoord
 
 
+def get_subecube(inp, xy_center, nside, wv_range=None):
+    """
+
+    Parameters
+    ----------
+    inp : str or Cube
+        Input filename or Cube object
+    xy_center : (float, float)
+        Coordinates of the center in pixels
+    nside : int
+        Number of pixels to each side of the central one
+        for the new cube
+    wv_range: (float, float)
+        Wavelength range of the subcube (wvmin,wvmax), must be in angstroms
+        If None it gets the full spectral range
+
+    Returns
+    -------
+    cube : Cube
+        Subcube
+
+    """
+
+    if not isinstance(inp, Cube): # assume str
+        cube = Cube(inp)
+    else:
+        cube = inp
+    yx_center = (xy_center[1], xy_center[0]) # note that center in pmdaf is given as (y,x)
+    unit_center = None # to be interpreted as pixels
+    subcube = cube.subcube(yx_center, 2*nside+1, lbda=wv_range,
+                           unit_center=unit_center,
+                           unit_size=unit_center,
+                           unit_wave=Unit("Angstrom"))
+    return subcube
+
+
+
+
+
+
+
 def make_empty_cube(radec_center, pixscale, nside, wave_coord):
     """Makes a new datacube with different WCS and 2*nside+1
     pixels per side
@@ -84,3 +125,4 @@ def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False):
             cube_new[:,j,i] = spec_n
             q += 1
     return cube_new
+
