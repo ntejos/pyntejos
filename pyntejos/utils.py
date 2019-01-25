@@ -395,7 +395,6 @@ def from_igmguesses_to_complist(infile):
         except:
             idict['sig_logN'] = 0.
 
-
         comp = AbsComponent.from_dict(idict, skip_abslines=False, chk_sep=False, chk_data=False, chk_vel=False)
         comp_list += [comp]
     return comp_list
