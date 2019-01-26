@@ -1,6 +1,7 @@
 """This module is meant for analysis of VLT/MUSE data"""
 
 import numpy as np
+import matplotlib.pyplot as plt
 import astropy.units as u
 from mpdaf.obj import Image, Cube, WCS, WaveCoord
 
@@ -74,13 +75,14 @@ def make_empty_cube(radec_center, pixscale, nside, wave_coord):
     wcs = WCS(crpix=crpix, crval=crval, cdelt=cdelt, deg=deg_bool, shape=shape)
     nw = wave_coord.shape  #
     data = np.zeros((nw, ntot, ntot))
-    cube = Cube(wcs=wcs, data=data, wave=wave_coord)
+    cube = Cube(wcs=wcs, data=data, var=data,wave=wave_coord)
     return cube
 
 
-def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False):
+def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False, verbose=False):
     """
     Substracts spectral continuum to a cube spaxels per spaxel
+    Only for unmasked spaxels
 
     Parameters
     ----------
@@ -94,6 +96,8 @@ def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False):
         This is fed into mpdaf.obj.Spectrum.poly_spec()
     inspect : bool
         Whether to inspect the continuum fits
+    verbose : bool
+
 
     Returns
     -------
@@ -104,13 +108,18 @@ def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False):
     cube_new = cube.copy()
     nw, ny, nx = cube.shape
     # subtract continuum on every spectrum
-    q = 1
+    q = 0
+    ntot = nx*ny
     for i in range(nx):
         for j in range(ny):
-            spec = cube_mpdaf[:,j,i]
+            q += 1
+            if np.alltrue(cube.mask[:,j,i]) == True:
+                continue
+            spec = cube[:,j,i]
             cont = spec.poly_spec(order, nsig=nsig)
             s = 'Spaxel ({},{}) [{}/{}]'.format(i,j,q,ntot)
-            print(s)
+            if verbose:
+                print(s)
             if inspect:
                 spec.plot(title=s)
                 cont.plot(color='r', drawstyle='line')
@@ -118,11 +127,11 @@ def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False):
             spec_n = spec.copy()
             spec_n.data = spec.data - cont.data.data
             cube_new[:,j,i] = spec_n
-            q += 1
+
     return cube_new
 
 
-def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, nside=20, arc_name='PSZ1GA311_G1'):
+def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, nside=20, arc_name='PSZ1GA311_G1', verbose=False):
     """
 
     Parameters
@@ -146,18 +155,19 @@ def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, nside=20, arc_name='PSZ1GA3
     ntot = nx * ny
     ra_abs = []
     dec_abs = []
-    specs = []
+    specs = [] # will store mpdaf Spec objects
     q = 1
     for x in range(nx):
         for y in range(ny):
             dec, ra = cube_imag.wcs.pix2sky((y, x))[0]
             ra_new, dec_new = ima2abs(ra, dec, arc_name=arc_name)
-            print('Spaxel ({},{}) [{}/{}]'.format(x, y, q, ntot))
-            print("  ra:  {:.6f} --> {:.6f}".format(ra, ra_new))
-            print("  dec: {:.6f} --> {:.6f}".format(dec, dec_new))
+            if verbose:
+                print('Spaxel ({},{}) [{}/{}]'.format(x, y, q, ntot))
+                print("  ra:  {:.6f} --> {:.6f}".format(ra, ra_new))
+                print("  dec: {:.6f} --> {:.6f}".format(dec, dec_new))
             ra_abs += [ra_new]
             dec_abs += [dec_new]
-            spec_aux = cube_imag.data[:, y, x].data  # check order (y,x)
+            spec_aux = cube_imag[:, y, x]  # check order (y,x)
             specs += [spec_aux]
             q += 1
 
@@ -166,12 +176,19 @@ def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, nside=20, arc_name='PSZ1GA3
     dec_center = 0.5 * (np.min(dec_abs) + np.max(dec_abs))
     radec_center = (ra_center, dec_center) * u.deg
     cube_abs = make_empty_cube(radec_center, pixelscale, nside=nside, wave_coord=cube_imag.wave)
+    # mask out all values
+    cube_abs.mask[:,:,:] = True
+
     # fill in the specs
     counter = np.zeros_like(cube_abs.data[0].data)
     for ii, spec in enumerate(specs):
         # ynew, xnew = cube_abs.wcs.sky2pix((dec_abs[ii],ra_abs[ii]))[0]
         ynew, xnew = cube_abs.wcs.sky2pix((dec_abs[ii], ra_abs[ii]), nearest=True)[0]
-        cube_abs.data[:, ynew, xnew] += specs[ii]
+        # unmask first, otherwise values are not assigned
+        cube_abs.mask[:,ynew, xnew] = False
+        cube_abs.data[:, ynew, xnew] += specs[ii].data
+        cube_abs.var[:, ynew, xnew] += specs[ii].var
+        # counter
         counter[ynew, xnew] += 1
     # are we loosing information ?
     if np.max(counter) > 1:
