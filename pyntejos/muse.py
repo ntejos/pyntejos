@@ -131,7 +131,7 @@ def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False, verbose=False
     return cube_new
 
 
-def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, nside=20, arc_name='PSZ1GA311_G1', verbose=False):
+def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, arc_name='PSZ1GA311_G1', verbose=False):
     """
 
     Parameters
@@ -153,6 +153,16 @@ def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, nside=20, arc_name='PSZ1GA3
     # first loop for establishing the new radec range
     nw, ny, nx = cube_imag.shape
     ntot = nx * ny
+
+    # Now determine the physical side as the original image to
+    # use in the new one. De-lensing should make the real image smaller
+    dx, dy = cube_imag.wcs.get_axis_increments()
+    # import pdb; pdb.set_trace()
+    assert np.fabs(dx) == np.fabs(dy), 'The cube has different increments for x and y. Not implemented for this.'
+    orig_pixscale = (dx*u.deg).to('arcsec')
+    factor = orig_pixscale.value / pixelscale.to('arcsec').value
+    nside = int(factor*nx/2.)
+
     ra_abs = []
     dec_abs = []
     specs = [] # will store mpdaf Spec objects
@@ -196,7 +206,11 @@ def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, nside=20, arc_name='PSZ1GA3
         nbad = np.sum(cond)
         print(
         "Warning(NT): there are {}/{} pixels in the abs-plane that have contributions from two or more pixels in the image plane. You should consider reducing the image scale (current = {} arcsec) of the new datacube.".format(
-            nbad, ntot, pixelscale_new.to('arcsec').value))
-    return cube_abs
+            nbad, ntot, pixelscale.to('arcsec').value))
+    # crop cube
+    cube_abs.crop()
+    return cube_abs, counter
+
+
 
 
