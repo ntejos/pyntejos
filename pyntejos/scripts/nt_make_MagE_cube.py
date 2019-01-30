@@ -36,7 +36,7 @@ def main(args=None):
         mage.write_config_make_MagE_cube_dummy("./config_make_MagE_cube_dummy.json")
         return
     else:
-        mage.make_MagE_cube(pargs.configfile)
+        mage.make_MagE_cube_v2(pargs.configfile)
 
 
 if __name__ == '__main__':

@@ -13,8 +13,10 @@ from astropy.io.fits.hdu.table import BinTableHDU
 from astropy.io.fits import HDUList, PrimaryHDU, ImageHDU
 from astropy.utils import isiterable
 from linetools.spectra.xspectrum1d import XSpectrum1D
+from linetools.spectra.io import readspec
 import copy
 import json
+from mpdaf.obj import Cube, WCS, WaveCoord
 
 usage = """\
 Usage: make_mage_cube.py config_file.json
@@ -48,19 +50,19 @@ def get_CD_matrix(pixscale_x, pixscale_y, pos_angle):
     ang_rad = pos_angle * np.pi / 180.
     # val1 is defined to_east
     # val2 is defined to_north
-    cd1_1 = pixscale_x * np.cos(ang_rad)  # proj. x on val1
-    cd1_2 = pixscale_y * -1 * np.sin(ang_rad) # proj. y on val1
-    cd2_1 = pixscale_x * -1 * np.sin(ang_rad) # proj. x on val2
-    cd2_2 = pixscale_y * -1 * np.cos(ang_rad) # proj. y on val2
-    # with this rotation the (1,1) is the northern position of the slit for pos_angles 0<PA<180
+    cd1_1 = pixscale_x * -1 * np.cos(ang_rad)  # proj. x on val1
+    cd1_2 = pixscale_y * 1 * np.sin(ang_rad) # proj. y on val1
+    cd2_1 = pixscale_x * 1 * np.sin(ang_rad) # proj. x on val2
+    cd2_2 = pixscale_y * 1 * np.cos(ang_rad) # proj. y on val2
+    # with this rotation the (x,y)=(1,11) is the northern position of the slit for pos_angles 0<PA<180
     # return values
     return cd1_1, cd1_2, cd2_1, cd2_2
 
 
 def create_ref_hdulist(reference_muse_file, reference_mage_file, params):
     """Create the HDUList by taking a muse file as reference and updating the header
-    by keeping/removing relevant/irrelevant information. Uses the MUSE one as t
-    he template"""
+    by keeping/removing relevant/irrelevant information. Uses the MUSE one as the
+    template"""
 
     # load the reference HDULists
     hdulist_muse = fits.open(reference_muse_file)
@@ -185,18 +187,19 @@ def make_MagE_cube(config_file):
     print(comment.replace("Cube created", "MagE cube will be created"))
 
     dirname = params['directory_mage']
-    filenames = glob.glob(dirname+"/*.txt")
+    filenames = glob.glob(dirname+"/*_??.fits")
     # sort them
     filenames.sort()
 
     # create the new datacube structure
-    len_wv = read_single_mage_file(filenames[0]).npix
+    len_wv = readspec(filenames[0]).npix
     cube = np.zeros_like(np.ndarray(shape=(len_wv, len(filenames), 1)))
     stat = np.zeros_like(cube)
     # model = np.zeros_like(cube)
 
     # read the files and fill the data cubes (cube and stat)
     print("Reading files from directory {} ordered as:".format(dirname))
+    ny = len(filenames)
     for ii,fname in enumerate(filenames):
         fn = fname.split('/')[-1]
         print("\t {}: {}".format(ii + 1, fn))
@@ -205,13 +208,25 @@ def make_MagE_cube(config_file):
         nfile = int(nfile)
         assert nfile == ii + 1, "The files in the directory are not sorted properly. Please check."
         try:
-            spec = read_single_mage_file(fname)
+            spec = readspec(fname)
+            if 0: # dummy
+                spec.flux = 1
+                spec.sig = 0
+            cube[:,0,ny-ii-1] = spec.flux.value
+            if np.isnan(spec.sig):
+                try:
+                    spec_sig = readspec(fname.replace('.fits','_sig.fits'))
+                    spec.sig = spec_sig.flux.value
+                except:
+                    spec.sig = 0
+            stat[:,0,ny-ii-1] = (spec.sig.value)**2
+            # model[:,ii,0] = model_sp.flux.value
 
             if 0: # dummy
                 spec.flux = 1
                 spec.sig = 0
-            cube[:,ii,0] = spec.flux.value
-            stat[:,ii,0] = spec.sig.value
+            cube[:,0,ny-ii-1] = spec.flux.value
+            stat[:,0,ny-ii-1] = (spec.sig.value)**2
             # model[:,ii,0] = model_sp.flux.value
         except:
             print("Something is wrong with spectrum {}".format(fname.split('/')[-1]))
@@ -234,3 +249,111 @@ def make_MagE_cube(config_file):
     # write the cube
     hdulist_new.writeto(params['output_cube'], clobber=True)
     print('Wrote file: {}'.format(params['output_cube']))
+
+
+def make_MagE_cube_v2(config_file):
+    """A new version to create the MagE cubes, it uses MPDAF objects.
+    It works for .fits 1-d spectra files.
+
+    Parameters
+    ----------
+    config_file : str
+        Configuration file with important parameters. See mage.dump_config_make_MagE_cube()
+
+    """
+
+    # read config_filename and add filename to params
+    f = open(config_file)
+    params = json.load(f)
+    params['config_filename'] = config_file
+
+    # reference files
+    reference_mage_file = params['reference_mage']
+    reference_muse_file = params['reference_muse']
+
+    # Add comment on how the header was created
+    comment = 'Cube created by pyntejos.mage.make_MagE_cube.py based on headers from {} and {}. Astrometry ' \
+              'and wavelength axis given by input configuration ' \
+              'file {}.'.format(reference_mage_file.split('/')[-1],reference_muse_file.split('/')[-1], params['config_filename'])
+
+    # Print message
+    print('')
+    print(comment.replace("Cube created", "MagE cube will be created"))
+
+    dirname = params['directory_mage']
+    filenames = glob.glob(dirname+"/*_??.fits")
+    # sort them
+    filenames.sort()
+
+    # create the new datacube structure
+    spec_ref = readspec(filenames[0])
+    nw, ny, nx = spec_ref.npix, len(filenames), 1
+
+    # get wavecoord
+    hdr = spec_ref.header
+    hdr['CUNIT1'] = 'Angstrom'
+    wave = WaveCoord(hdr=hdr)
+    # get WCS
+    crpix = params['CRPIX2'], params['CRPIX1']  # note y,x order
+    crval = params['CRVAL2'], params['CRVAL1']  # ditto
+    cdelt = params['PIXSCALE_Y'], params['PIXSCALE_X']  # ditto (negative to decrease towards east)
+    rot = params['POS_ANGLE']
+    if rot == "None": # get angle from MagE reference header
+        print("No PA given in parameter file. Reding PA from MagE reference .fits header")
+        hdulist_mage = fits.open(params['reference_mage'])
+        rot = hdulist_mage[0].header['ROTANGLE'] - 44.5  # this is the current offset in angle
+        print("PA={}deg".format(rot))
+    shape = (ny, nx)
+    wcs = WCS(crpix=crpix, crval=crval, cdelt=cdelt, deg=True, shape=shape, rot=-1*rot) # for some reason negative PA works
+    # redefine wcs to have CD matrix rather than PC matrix
+    if rot != 0.:
+        hdr = wcs.to_header()
+        hdr.rename_keyword('PC1_1','CD1_1')
+        hdr.rename_keyword('PC2_1','CD2_1')
+        hdr.rename_keyword('PC1_2','CD1_2')
+        hdr.rename_keyword('PC2_2','CD2_2')
+        wcs = WCS(hdr=hdr)
+
+    # create data structures
+    data = np.zeros_like(np.ndarray(shape=(nw,ny,nx)))
+    var = np.zeros_like(data)
+
+    # read the files and fill the data cubes (cube and variance)
+    print("Reading files from directory {} ordered as:".format(dirname))
+    for ii,fname in enumerate(filenames):
+        fn = fname.split('/')[-1]
+        print("\t {}: {}".format(ii + 1, fn))
+        # MAKE SURE THE SPECTRA IS PROPERLY SORTED
+        nfile = fn.split('.')[0].split('_')[-1]
+        nfile = int(nfile)
+        assert nfile == ii + 1, "The files in the directory are not sorted properly. Please check."
+        try:
+            spec = readspec(fname)
+            if 0: # dummy
+                spec.flux = 1
+                spec.sig = 0
+            data[:,ny-ii-1,0] = spec.flux.value  # position "01" is the most north, y increase to north
+            if np.isnan(spec.sig):
+                try:
+                    spec_sig = readspec(fname.replace('.fits','_sig.fits'))
+                    spec.sig = spec_sig.flux.value
+                except:
+                    spec.sig = 0
+            var[:,ny-ii-1,0] = (spec.sig.value)**2
+            # model[:,ii,0] = model_sp.flux.value
+        except:
+            print("Something is wrong with spectrum {}".format(fname.split('/')[-1]))
+            import pdb; pdb.set_trace()
+            raise ValueError("Something is wrong with spectrum {}".format(fname.split('/')[-1]))
+
+    # create the Cube object
+    cube = Cube(data=data, var=var, wcs=wcs, wave=wave)
+    cube.write(params['output_cube'])
+    print('Wrote file: {}'.format(params['output_cube']))
+
+    # create white image
+    white = cube.sum(axis=0)
+    white.write(params['output_cube'].replace('cube', 'white'))
+    print('Wrote file: {}'.format(params['output_cube'].replace('cube', 'white')))
+    # import pdb; pdb.set_trace()
+    return cube
