@@ -73,26 +73,5 @@ def create_regfile_nboxes_from_slit(output, xy, PA, l, w, n, pixscale):
         f.write(s)
     f.close()
 
-def create_regfile_nboxes_(output, xy, PA, n, w=1*u.arcsec):
-    """ Creates a region file with n boxes within a mage slit
-
-
-    Parameters
-    ----------
-    output
-    xy
-    PA
-    n
-    w
-
-    Returns
-    -------
-
-    """
-    pixscale = 0.3*u.arcsec
-    l = 10*u.arcsec
-    lp = l.to('arcsec').value / pixscale.to('arcsec').value
-    wp = w.to('arcsec').value / pixscale.to('arcsec').value
-    create_regfile_nboxes_from_slit(output, xy, PA, lp, wp, n)
 
 
