@@ -82,6 +82,3 @@ def create_regfile_nboxes_from_slit(output, xy, PA, l, w, n, pixscale, add_label
         s = get_boxregion_string(xnew, ynew, a, b, angle, text=text)
         f.write(s)
     f.close()
-
-
-

@@ -158,8 +158,10 @@ def write_config_make_MagE_cube_dummy(filename):
     #     json.dump(params, fp, indent=4)
 
 
-def make_MagE_cube(config_file):
+def make_MagE_cube_old(config_file):
     """Creates a IFU cube for MagE data of a single slit MagE
+
+    Old version copies the MUSE header, new version starts from scratch using MPDAF classes
 
     Parameters
     ----------
@@ -253,7 +255,9 @@ def make_MagE_cube(config_file):
 
 def make_MagE_cube_v2(config_file):
     """A new version to create the MagE cubes, it uses MPDAF objects.
-    It works for .fits 1-d spectra files.
+    It works for .fits 1-d spectra files stored in a directory
+    Errors are looked for in the same directory with *_sig.fits extension
+
 
     Parameters
     ----------
@@ -294,24 +298,28 @@ def make_MagE_cube_v2(config_file):
     hdr['CUNIT1'] = 'Angstrom'
     wave = WaveCoord(hdr=hdr)
     # get WCS
-    crpix = params['CRPIX2'], params['CRPIX1']  # note y,x order
-    crval = params['CRVAL2'], params['CRVAL1']  # ditto
-    cdelt = params['PIXSCALE_Y'], params['PIXSCALE_X']  # ditto (negative to decrease towards east)
-    rot = params['POS_ANGLE']
-    if rot == "None": # get angle from MagE reference header
+    crpix_yx = params['CRPIX2'], params['CRPIX1']  # note y,x order
+    crval_decra = params['CRVAL2'], params['CRVAL1']  # ditto
+    cdelt_yx = params['PIXSCALE_Y'], -1*params['PIXSCALE_X']  # ditto (negative to decrease towards east)
+    PA = params['POS_ANGLE']
+    if PA == "None": # get angle from MagE reference header
         print("No PA given in parameter file. Reding PA from MagE reference .fits header")
         hdulist_mage = fits.open(params['reference_mage'])
-        rot = hdulist_mage[0].header['ROTANGLE'] - 44.5  # this is the current offset in angle
-        print("PA={}deg".format(rot))
+        PA = hdulist_mage[0].header['ROTANGLE'] - 44.5  # this is the current offset in angle
+        print("PA={}deg".format(PA))
     shape = (ny, nx)
-    wcs = WCS(crpix=crpix, crval=crval, cdelt=cdelt, deg=True, shape=shape, rot=-1*rot) # for some reason negative PA works
+    wcs = WCS(crpix=crpix_yx, crval=crval_decra, cdelt=cdelt_yx, deg=True, shape=shape, rot=-1*PA)  # for some reason negative PA works
     # redefine wcs to have CD matrix rather than PC matrix
-    if rot != 0.:
+    if 1: #rot != 0:
         hdr = wcs.to_header()
         hdr.rename_keyword('PC1_1','CD1_1')
         hdr.rename_keyword('PC2_1','CD2_1')
         hdr.rename_keyword('PC1_2','CD1_2')
         hdr.rename_keyword('PC2_2','CD2_2')
+        # hdr['CD1_1'] = hdr['PC1_1']
+        # hdr['CD2_1'] = hdr['PC2_1']
+        # hdr['CD1_2'] = hdr['PC1_2']
+        # hdr['CD2_2'] = hdr['PC2_2']
         wcs = WCS(hdr=hdr)
 
     # create data structures
