@@ -27,6 +27,9 @@ def get_boxregion_string(x, y, a, b, angle, text=None):
 
 def create_regfile_nboxes_from_slit(output, xy, PA, l, w, n, pixscale, add_label=True):
     """
+    Creates a ds9 region file with n boxes within a rectangular
+    region representing a slit of width w and length l in arcsecs, centred in pixel xy and
+    with a position angle PA. [Note: n must be odd integer]
 
     Based on F. Corro script
 
@@ -45,7 +48,7 @@ def create_regfile_nboxes_from_slit(output, xy, PA, l, w, n, pixscale, add_label
     w : float
         Width of the slit in arsecs
     n : int
-        Odd integer
+        Odd positive integer
     pixscale : float
         Pixel scale in arcsec
     add_label : bool
