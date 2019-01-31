@@ -71,7 +71,7 @@ def create_regfile_nboxes_from_slit(output, xy, PA, l, w, n, pixscale, add_label
     nside = (n - 1)/2
     a = w / pixscale
     b = l / n / pixscale
-    angle =  PA  # angle in x-y coordinates is offset from PA
+    angle =  PA  # angle from x to y coordinates is the same than PA from North to East in the usual convention
     angle_rad = angle * np.pi / 180.
     for ii in range(-1*nside, nside+1):
         xnew = xy[0] + ii * b * np.sin(angle_rad)
