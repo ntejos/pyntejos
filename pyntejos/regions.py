@@ -49,7 +49,7 @@ def create_regfile_nboxes_from_slit(output, xy, PA, l, w, n, pixscale, add_label
     pixscale : float
         Pixel scale in arcsec
     add_label : bool
-        Whether to add a label to the region, (1 to n)
+        Whether to add a label to the region, (1 to n) where 1 is the northern one when PA=0.
 
     Returns
     -------
