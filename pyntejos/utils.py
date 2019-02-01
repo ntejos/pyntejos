@@ -433,6 +433,17 @@ def renorm2_factor_from_wvrange(sp1, sp2, wvrange=None):
     return renorm2
 
 
+def get_s2n(sp, wvrange=None):
+    if wvrange is not None:
+        cond = (sp.wavelength.to('AA').value >= wvrange[0]) & (sp.wavelength.to('AA').value <= wvrange[1])
+    else:
+        cond = [True]*sp.npix
+    s2n = np.nanmedian(sp.flux/sp.sig)
+    return s2n
+
+
+
+
 def plot_two_spec(sp1, sp2, text1='spec1', text2='spec2', renorm2=True, renorm_wvrange=None, verbose=False):
     """Plot two XSpectrum1D spectra for comparison purposes"""
 
