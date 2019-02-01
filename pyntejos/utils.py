@@ -442,8 +442,6 @@ def get_s2n(sp, wvrange=None):
     return s2n
 
 
-
-
 def plot_two_spec(sp1, sp2, text1='spec1', text2='spec2', renorm2=True, renorm_wvrange=None, verbose=False):
     """Plot two XSpectrum1D spectra for comparison purposes"""
 
