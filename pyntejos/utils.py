@@ -6,6 +6,7 @@ import numpy as np
 from linetools import utils as ltu
 from linetools.isgm.abscomponent import AbsComponent
 from linetools.spectra.io import readspec
+from linetools.spectra.xspectrum1d import XSpectrum1D
 import linetools.isgm.io as ltiio
 from linetools.isgm import utils as ltiu
 
@@ -416,22 +417,64 @@ def from_igmguesses_to_table(infile):
     tab = ltiu.table_from_complist(complist)
     return tab
 
+def renorm2_factor_from_wvrange(sp1, sp2, wvrange=None):
+    """Returns the normalization factor to scale spec2 to spec1 based on flux
+    within wvrange
+    """
+    if wvrange is not None:
+        cond1 = (sp1.wavelength.to('AA').value >= wvrange[0]) & (sp1.wavelength.to('AA').value <= wvrange[1])
+        cond2 = (sp2.wavelength.to('AA').value >= wvrange[0]) & (sp2.wavelength.to('AA').value <= wvrange[1])
+        median1 = np.nanmedian(sp1.flux[cond1])
+        median2 = np.nanmedian(sp2.flux[cond2])
+    else:
+        median1 = np.nanmedian(sp1.flux)
+        median2 = np.nanmedian(sp2.flux)
+    renorm2 = median1/median2
+    return renorm2
 
-def plot_two_spec(sp1, sp2, text1='spec1', text2='spec2', renorm2=1.0):
+
+def plot_two_spec(sp1, sp2, text1='spec1', text2='spec2', renorm2=True, renorm_wvrange=None, verbose=False):
     """Plot two XSpectrum1D spectra for comparison purposes"""
 
-    plt.figure()
+    if renorm2:
+        if not isinstance(renorm2, bool): # assume float
+            renorm = renorm2
+        else:
+            renorm = renorm2_factor_from_wvrange(sp1, sp2, wvrange=renorm_wvrange)
+    max1 = np.nanmax(sp1.flux)
+    max2 = np.nanmax(sp2.flux*renorm)
+    ymax = 1.1*np.max([max1,max2])
+
+    #main plot
     plt.plot(sp1.wavelength, sp1.flux, 'k', drawstyle='steps-mid', label=text1)
     plt.plot(sp1.wavelength, sp1.sig, 'g', drawstyle='steps-mid')
-    plt.plot(sp2.wavelength, renorm2*sp2.flux, 'b', drawstyle='steps-mid', label=text2)
-    plt.plot(sp2.wavelength, renorm2*sp2.sig, 'y', drawstyle='steps-mid')
+    plt.plot(sp2.wavelength, renorm*sp2.flux, 'b', drawstyle='steps-mid', label=text2)
+    plt.plot(sp2.wavelength, renorm*sp2.sig, 'y', drawstyle='steps-mid')
+    plt.ylim(0, ymax)
     plt.legend()
     # print stats
-    print("<SN1> = {}".format(np.nanmedian(sp1.flux/sp1.sig)))
-    print("<SN2> = {}".format(np.nanmedian(sp2.flux/sp2.sig)))
-    print("<FL_IVAR1> = {}".format(np.nanmedian(sp1.flux/sp1.sig**2)))
-    print("<FL_IVAR2> = {}".format(np.nanmedian(sp2.flux/sp2.sig**2)))
-    print("<FL1>/<FL2> = {}".format(np.nanmedian(sp1.flux)/np.nanmedian(sp2.flux)))
+    if verbose:
+        print("<SN1> = {}".format(np.nanmedian(sp1.flux/sp1.sig)))
+        print("<SN2> = {}".format(np.nanmedian(sp2.flux/sp2.sig)))
+        print("<FL_IVAR1> = {}".format(np.nanmedian(sp1.flux/sp1.sig**2)))
+        print("<FL_IVAR2> = {}".format(np.nanmedian(sp2.flux/sp2.sig**2)))
+        print("<FL1>/<FL2> = {}".format(np.nanmedian(sp1.flux)/np.nanmedian(sp2.flux)))
+
+
+def plot_two_mpdaf_spec(sp1, sp2, wvrange=None, **kwargs):
+    """Plot two MPDAF Spectrum objects"""
+
+    # mask region of interest
+    if wv_range is not None:
+        sp1.mask_region(lmin=wvrange[0], lmax=wvrange[1], inside=False)
+        sp2.mask_region(lmin=wvrange[0], lmax=wvrange[1], inside=False)
+
+    # transform to XSpectrum1D objects
+    spec1 = xspectrum1d_from_mpdaf_spec(sp1)
+    spec2 = xspectrum1d_from_mpdaf_spec(sp2)
+    # plot
+    plot_two_spec(spec1, spec2, **kwargs)
+
 
 def plot_spec_and_models(spec_filename, models_filenames='all'):
     """Plots several models in on top of a single spectrum.
@@ -492,4 +535,43 @@ def get_flux_wvrange(spec, wvrange, flux_units = u.erg/u.cm/u.cm/u.s/u.AA, subst
     if substract_cont:
         raise NotImplementedError("Not yet implemented")
     return flux
+
+
+def xspectrum1d_from_mpdaf_spec(sp):
+    """Gets a XSpectrum1D object from an MPDAF Spectrum"""
+    nomask = ~sp.mask
+    fl = sp.data[nomask]
+    er = np.sqrt(sp.var[nomask])
+    wv = sp.wave.coord()[nomask]
+    spec = XSpectrum1D.from_tuple((wv, fl, er))
+    return spec
+
+
+def chi2_from_two_spec(spec1,spec2, wvrange=None):
+    """Return the Chi2 sum of the flux differences between spec1 and spec2
+    These must be in the same wavelength grid
+    """
+    from scipy.stats import sigmaclip
+
+    assert spec1.npix == spec2.npix, "Specs must be of same length"
+    assert np.alltrue(spec1.wavelength == spec2.wavelength), "Specs must be in the same wavelength grid"
+
+    # obtain error2
+    if (spec1.sig_is_set) and (spec2.sig_is_set):
+        er2 = spec1.sig**2 + spec2.sig**2
+    elif (spec1.sig_is_set):
+        er2 = spec1.sig**2
+    elif (spec2.sig_is_set):
+        er2 = spec2.sig**2
+    else:
+        er2 = 1.
+    # clean er2 a bit
+    _ , min, max = sigmaclip(er2, low=3, high=3)
+    er2 = np.where(er2 <= min, np.mean(er2), er2)
+
+    # import pdb; pdb.set_trace()
+    chi2 = (spec1.flux - spec2.flux)**2. / er2
+    cond = (spec1.wavelength.to('AA').value >= wvrange[0]) & (spec1.wavelength.to('AA').value <= wvrange[1])
+    chi2_dof = np.sum(chi2[cond])/len(chi2[cond])
+    return chi2_dof
 

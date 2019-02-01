@@ -6,6 +6,7 @@
 import glob
 import sys
 import numpy as np
+import matplotlib.pyplot as plt
 from astropy.io import fits, ascii
 from astropy import units as u
 from astropy.time import Time
@@ -16,6 +17,7 @@ from linetools.spectra.xspectrum1d import XSpectrum1D
 from linetools.spectra.io import readspec
 import copy
 import json
+from pyntejos import utils as ntu
 from mpdaf.obj import Cube, WCS, WaveCoord
 
 usage = """\
@@ -365,3 +367,30 @@ def make_MagE_cube_v2(config_file):
     print('Wrote file: {}'.format(params['output_cube'].replace('cube', 'white')))
     # import pdb; pdb.set_trace()
     return cube
+
+
+def plot_specs_from_magecube(magecube, only_plot=None, **kwargs):
+    """Plots the n spectra from a magecube
+
+    magecube : mpdaf Cube
+        original cube
+    only_plot : iterable or None
+        If not None, iterable with positions to plot. e.g. [1,3,5]
+        Convention is that positions start from y=1 upwards
+
+    """
+
+    nw, ny, nx = magecube.shape
+    assert nx == 1, "Your magecube does not have the conventional astrometry, where the slit is aligned in the y-axis"
+    if only_plot is not None:
+        pos_array = only_plot
+    else:
+        pos_array = range(1, ny+1)
+    for ii in pos_array:
+        sp = magecube[:,ii-1,0]
+        spec = ntu.xspectrum1d_from_mpdaf_spec(sp)
+        plt.plot(spec.wavelength, spec.flux, drawstyle='steps-mid', label='(x,y)=({},{})'.format(1,ii), **kwargs)
+    plt.xlabel('Wavelength (AA)')
+    plt.ylabel('Relative flux')
+    plt.legend()
+    plt.show()
