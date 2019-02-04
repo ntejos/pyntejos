@@ -480,6 +480,8 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
                 if os.path.isfile(newcube_name):
                     print('File already exists, skiping: {}'.format(newcube_name.split('/')[-1]))
                     continue
+                else:
+                    print('Writing file: {}'.format(newcube_name))
                 # create the data structure
                 nw, ny, nx = magecube_orig.shape
                 nw = musecube.shape[0] # replace mw with that of muse datacube
@@ -499,7 +501,7 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
                 magecube_new = Cube(wcs=magecube_orig.wcs, wave=musecube.wave, data=data, var=var)
                 newcube_name = master_dirname + '/' + rootname + '/magecube_from_muse_{}.fits'.format(rootname)
                 magecube_new.write(newcube_name)
-    plt.show()
+    # plt.show()
     tab['name'] = names
     tab['xc'] = [float(name.split('-')[0].replace('p','.')) for name in tab['name']]
     tab['yc'] = [float(name.split('-')[1].replace('p','.')) for name in tab['name']]
@@ -520,6 +522,7 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         for ii in range(ny):
             sp1 = magecube_orig[:, ii, 0]  # MagE data
             sp2 = magecube_new[:, ii, 0]  # MUSE data
+            import pdb; pdb.set_trace()
             # mask region of interest
             sp1.mask_region(lmin=plot_range[0], lmax=plot_range[1], inside=False)
             sp2.mask_region(lmin=plot_range[0], lmax=plot_range[1], inside=False)
@@ -561,6 +564,7 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         chi2w += [np.sum(chi2_w)]
     tab['chi2'] = chi2
     tab['chi2w'] = chi2w
-    tab.write(master_dirname+'/astrometry_results.dat', format='ascii')
+    tab.write(master_dirname+'/astrometry_results.dat', format='ascii', overwrite=True)
+    tab.write(master_dirname+'/astrometry_results.fits', overwrite=True)
     return tab
 
