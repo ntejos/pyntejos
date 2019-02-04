@@ -492,8 +492,8 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
                     spec = musecube_pymuse.get_spec_from_ds9regfile(output, mode='sum', i=ii, frac=0.1, npix=0,
                                                           empirical_std=False, n_figure=None,
                                                             save=False, save_mask=False, plot=False)
-                    data[:,ny-ii-1,0] = spec.flux
-                    var[:,ny-ii-1,0] = spec.sig**2
+                    data[:, ny-ii-1, 0] = spec.flux
+                    var[:, ny-ii-1, 0] = spec.sig**2
                     # import pdb; pdb.set_trace()
                 # redefine the structure
                 magecube_new = Cube(wcs=magecube_orig.wcs, wave=musecube.wave, data=data, var=var)
@@ -518,8 +518,8 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         chi2_tot = []
         s2n_tot = []
         for ii in range(ny):
-            sp1 = magecube_orig[:,ii,0]  # MagE data
-            sp2 = magecube_new[:,ii,0]  # MUSE data
+            sp1 = magecube_orig[:, ii, 0]  # MagE data
+            sp2 = magecube_new[:, ii, 0]  # MUSE data
             # mask region of interest
             sp1.mask_region(lmin=plot_range[0], lmax=plot_range[1], inside=False)
             sp2.mask_region(lmin=plot_range[0], lmax=plot_range[1], inside=False)
