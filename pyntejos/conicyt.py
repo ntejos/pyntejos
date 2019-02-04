@@ -34,7 +34,7 @@ def add_pos_author(tab, lastname):
 def get_ci_factor(tab):
     """C_i number of citations divided by number of years since publication"""
     current_year = ntu.get_current_year()
-    deno = np.where(current_year==tab['year'], tab['year'], (current_year - tab['year']))
+    deno = np.where(current_year==tab['year'], 1., (current_year - tab['year']))
     ci = tab['citations'] / deno.astype(float)
     return ci
 
