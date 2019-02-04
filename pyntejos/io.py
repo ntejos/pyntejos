@@ -298,7 +298,7 @@ def read_publication_xml(filename):
             citation_exists = False
 
     tab = Table()
-    tab['ind'] = range(0,len(bibcode))
+    # tab['ind'] = range(0,len(bibcode))
     tab['bibcode'] = bibcode
     tab['pubdate'] = pubdate
     tab['year'] = [int(b[:4]) for b in tab['bibcode']]
@@ -308,4 +308,7 @@ def read_publication_xml(filename):
     tab['n_authors'] = [len(authors) for authors in tab['authors']]
     tab['1author'] = [a[0].split(',')[0] for a in tab['authors']]
     tab['name'] = ['{}+{}'.format(fa,yr) for fa, yr in zip(tab['1author'], tab['year'])]
+    # new order of columns
+    new_order = ['name', 'bibcode', 'year', 'citations', 'pubdate', '1author', 'authors', 'n_authors']
+    tab = tab[new_order]
     return tab

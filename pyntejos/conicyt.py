@@ -39,11 +39,29 @@ def get_ci_factor(tab):
     return ci
 
 
+def is_published(tab):
+    """Returns boolean array on whether a paper has been published"""
+    is_pub = []
+    nopub = ['prop','yCat', 'soft', 'conf', 'IAUS']
+    for row in tab:
+        bibcode = row['bibcode']
+        q = 0
+        for aux in nopub:
+            if aux in bibcode:
+                is_pub += [False]
+                q = 1
+                break
+        if q == 0:
+            is_pub += [True]
+    is_pub = np.array(is_pub)
+    return is_pub
+
+
 def get_li_factor(tab, lastname, conc='ini19'):
     """L_i factor defined in FONDECYT Regular o Iniciacion 2019"""
     li = [0.2]*len(tab) # base
     li = np.array(li)
-    author_pos = get_author_number(tab, lastname)
+    author_pos = tab['pos_{}'.format(lastname)]
     author_pos = np.array(author_pos)
     if conc == 'ini19':
         li = np.where(author_pos == 5, 0.3, li)
@@ -60,25 +78,26 @@ def get_li_factor(tab, lastname, conc='ini19'):
         li = np.where(author_pos <= 2, 1.0, li)
         li = np.where(author_pos == 0, 0.0, li)
     else:
-        ValueError('Not implemented for this concurso: {}.'.format(conc))
+        raise ValueError('Not implemented for this concurso: {}.'.format(conc))
     return li
 
 
-def get_si_factor(tab, ci, li, conc='ini19'):
+def get_si_factor(ci, li, conc='ini19'):
     """S_i factor defined in FONDECYT Regular or Iniciacion"""
-    if conc in ['ini19, reg19']:
+    # import pdb; pdb.set_trace()
+    if conc in ['ini19', 'reg19']:
         si = li*((1 + ci)**0.5)
     else:
-        ValueError('Not implemented for this concurso: {}.'.format(conc))
+        raise ValueError('Not implemented for this concurso: {}.'.format(conc))
     return si
 
 
 def get_puntaje(S, NA, conc='ini19'):
     if conc == 'ini19':
         punt = 1. + 2.7*((S/(NA+2))**0.25)
-    elif conc = 'reg19'
+    elif conc == 'reg19':
         punt = 1. + 1.7*(S**0.25)  # does not depend on NA
     else:
-        ValueError('Not implemented for this concurso: {}.'.format(conc))
+        raise ValueError('Not implemented for this concurso: {}.'.format(conc))
     return punt
 
