@@ -306,4 +306,6 @@ def read_publication_xml(filename):
     # tab['title'] = title  # something wrong with encoding
     tab['authors'] = authors
     tab['n_authors'] = [len(authors) for authors in tab['authors']]
+    tab['1author'] = [a[0].split(',')[0] for a in tab['authors']]
+    tab['name'] = ['{}+{}'.format(fa,yr) for fa, yr in zip(tab['1author'], tab['year'])]
     return tab
