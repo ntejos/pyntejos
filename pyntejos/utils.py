@@ -241,6 +241,14 @@ def get_today_str():
     return s
 
 
+def get_current_year():
+    """Returns current Gregorian year"""
+    import time
+    t = time.gmtime()
+    year = t.tm_year
+    return year
+
+
 def complist_from_igmgjson(igmguesses_json):
     """Creates a list of AbsComponenbts from a igmguesses_json file
 

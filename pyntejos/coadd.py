@@ -95,6 +95,7 @@ def load_single_x1d_stis(filename, debug=False):
                 pl.plot(sp.WAVELENGTH[ii], sp.ERROR[ii], ":")
     return spec_list
 
+
 def coadd_cos_from_x1dfiles(filenames, wv_array=None, A_pix=0.01*u.AA):
     spec_list = []
     #TODO: mask out x1d spectral regions with bad values.

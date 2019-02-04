@@ -236,3 +236,74 @@ def write_DS9reg(x, y, filename=None, coord='IMAGE', ptype='x', size=20,
 
 #def read_ascii(filename,names=None,):
 #    """Read ascii file table"""
+
+def read_publication_xml(filename):
+
+    """Produces a table from the ADS xml file
+
+    Returns
+    -------
+    tab : astropy Table
+        Table version of the xml file with most relevant values
+
+    """
+
+
+    # first read the file
+    f = open(filename, 'r')
+    lines = f.readlines()
+    reset_author = False
+    author_aux = []
+    authors = []
+    bibcode = []
+    title = []
+    citations = []
+    pubdate = []
+    journal = []
+    citation_exists = False
+    for ii, line in enumerate(lines):
+        if '<bibcode>' in line:
+            aux = line.split('<bibcode>')[1].split('</bibcode>')[0]
+            bibcode += [aux]
+            if 'arXiv' in line:
+                journal += ['arXiv']
+            else:
+                aux = bibcode[-1][4:].split('.')[0]
+                if 'prop' in line:
+                    aux = aux + '.prop'
+                journal += [aux]
+        elif '<title>' in line:
+            aux = line.split('<title>')[1].split('</title>')[0]
+            title += [aux]
+        elif '<citations>' in line:
+            aux = line.split('<citations>')[1].split('</citations>')[0]
+            citations += [aux]
+            citation_exists = True
+        elif '<pubdate>' in line:
+            aux = line.split('<pubdate>')[1].split('</pubdate>')[0]
+            pubdate += [aux]
+
+        # authors
+        if reset_author is True:
+            author_aux = []
+            reset_author = False
+        if '<author>' in line:
+            aux = line.split('<author>')[1].split('</author>')[0]
+            author_aux += [aux]
+        elif '</record>' in line: # new article
+            authors += [author_aux]
+            reset_author = True
+            if citation_exists is False:
+                citations += [0]
+            citation_exists = False
+
+    tab = Table()
+    tab['ind'] = range(0,len(bibcode))
+    tab['bibcode'] = bibcode
+    tab['pubdate'] = pubdate
+    tab['year'] = [int(b[:4]) for b in tab['bibcode']]
+    tab['citations'] = np.array(citations).astype(int)
+    # tab['title'] = title  # something wrong with encoding
+    tab['authors'] = authors
+    tab['n_authors'] = [len(authors) for authors in tab['authors']]
+    return tab

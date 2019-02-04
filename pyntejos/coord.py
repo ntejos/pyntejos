@@ -358,7 +358,7 @@ def unique_radec(ra, dec, tol):
     return np.array(iunique), iextras
 
 def optimal_ra_dec(ra,dec,ra0=None,dec0=None,ra_range=None):
-    """For a given ra, dec coordinates in degrees, it sortes them
+    """For a given ra, dec coordinates in degrees, it sorts them
     minimizing the distance between the coordinate i and the coordinate
     i+1. The output is a tuple (ra,dec). ra0 and dec0 are the
     coordinates to compare with the firts element. If ra_range is given
