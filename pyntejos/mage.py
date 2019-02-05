@@ -566,8 +566,8 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         chi2_11 += [chi2_tot]
     tab['chi2'] = chi2
     tab['chi2w'] = chi2w
+    tab.write(master_dirname + '/astrometry_results.dat', format='ascii.fixed_width', overwrite=True)
     tab['chi2_11'] = chi2_11
-    tab.write(master_dirname + '/astrometry_results.dat', format='ascii', overwrite=True)
     tab.write(master_dirname + '/astrometry_results.fits', overwrite=True)
     return tab
 
