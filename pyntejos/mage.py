@@ -522,7 +522,7 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         for ii in range(ny):
             sp1 = magecube_orig[:, ii, 0]  # MagE data
             sp2 = magecube_new[:, ii, 0]  # MUSE data
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             # mask region of interest
             sp1.mask_region(lmin=plot_range[0], lmax=plot_range[1], inside=False)
             sp2.mask_region(lmin=plot_range[0], lmax=plot_range[1], inside=False)
