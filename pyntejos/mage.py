@@ -511,6 +511,9 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
     chi2 = []
     chi2w = []
     chi2_11 = []
+    fl_mage_11 = []
+    fl_muse_11 = []
+    chi2_sp = []
     for jj, name in enumerate(tab['name']):
         newcube_name = master_dirname + '/' + name + '/magecube_from_muse_{}.fits'.format(name)
         # load the magecube
@@ -520,6 +523,8 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
 
         chi2_tot = []
         s2n_tot = []
+        fl_mage = []
+        fl_muse = []
         for ii in range(ny):
             sp1 = magecube_orig[:, ii, 0]  # MagE data
             sp2 = magecube_new[:, ii, 0]  # MUSE data
@@ -548,6 +553,11 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
             s2n_aux = ntu.get_s2n(spec2, wvrange=chi2_range)
             chi2_tot += [chi2_aux]
             s2n_tot += [s2n_aux]
+
+            # also store total fluxes per spaxel
+            fl_mage += [np.nansum(spec1.flux)]
+            fl_muse += [np.nansum(spec2.flux)]
+
             if plot:
                 plt.title('Run:{}\nPos#{}, Chi2={:.1f}, s2n={:.0f}'.format(name,ii+1, chi2_aux, s2n_aux))
                 plt.legend()
@@ -556,6 +566,10 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
 
         chi2_tot = np.array(chi2_tot)
         s2n_tot = np.array(s2n_tot)
+        fl_mage = np.array(fl_mage)
+        fl_muse = np.array(fl_muse)
+        fl_mage = fl_mage / np.sum(fl_mage)
+        fl_muse = fl_muse / np.sum(fl_muse)
         chi2_w = chi2_tot * s2n_tot / np.sum(s2n_tot)
         print("{}  [{}/{}]".format(name, jj+1, len(tab)))
         print(chi2_tot)
@@ -565,8 +579,15 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         chi2 += [np.sum(chi2_tot)/n]
         chi2w += [np.sum(chi2_w)]
         chi2_11 += [chi2_tot]
+        fl_mage_11 += [fl_mage]
+        fl_muse_11 += [fl_muse]
+        chi2_sp += [np.sum((fl_muse-fl_mage)**2 / fl_mage**2)/len(fl_mage)]
+
     tab['chi2'] = chi2
     tab['chi2w'] = chi2w
     tab['chi2_11'] = chi2_11
+    tab['fl_muse_11'] = fl_muse_11
+    tab['fl_mage_11'] = fl_mage_11
+    tab['chi2_sp'] = chi2_sp
     return tab
 
