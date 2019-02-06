@@ -398,7 +398,7 @@ def plot_specs_from_magecube(magecube, only_plot=None, **kwargs):
     plt.show()
 
 
-def compute_chi2_magecube(magecube1, magecube2, chi2_wvrange, renorm_wvrange, plot_wvrange, plot=False):
+def compute_chi2_magecubes(magecube1, magecube2, chi2_wvrange, renorm_wvrange, plot_wvrange, plot=False):
     """
     Computes a (renormalized) spectral Chi2 analysis spaxel per spaxel betweein magecube1 and magecube2.
     Computes a (normalized) total flux Chi2 analysis spaxel per spaxel between magecube1 and magecube2.
@@ -452,7 +452,7 @@ def compute_chi2_magecube(magecube1, magecube2, chi2_wvrange, renorm_wvrange, pl
         sp2 = magecube2[:, ii, 0]  # Spectrum
         # keep only region of interest
         for sp in [sp1,sp2]:
-            sp.mask_region(lmin=plot_range[0], lmax=plot_range[1], inside=False)
+            sp.mask_region(lmin=plot_wvrange[0], lmax=plot_wvrange[1], inside=False)
         # convert to XSpectrum1D objects
         spec1 = ntu.xspectrum1d_from_mpdaf_spec(sp1)
         spec2 = ntu.xspectrum1d_from_mpdaf_spec(sp2)
@@ -506,7 +506,7 @@ def compute_chi2_magecube(magecube1, magecube2, chi2_wvrange, renorm_wvrange, pl
 
 
 def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc_array, PA_array,
-                              chi2_range, renorm_range, plot_range, plot=True):
+                              chi2_wvrange, renorm_wvrange, plot_wvrange, plot=True):
     """Utility for determining the best astrometry for a MagE Cube based on a comparisom
     with a reference MUSE Cube. It will use different (xc, yc, PA) positions for a virtual MagE slit
     on a MUSE reference datacube and will determine the set that has the minimum Chi2 within a
@@ -531,10 +531,10 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
     chi2_wvrange : (float, float)
         Wavelength range for performing the chi2 comparison. Ideally it has to be a small
         region centred in a spectral feature (e.g. emission line)
-    renorm_range : (float, float)
+    renorm_wvrange : (float, float)
         Wavelength range for performing the flux renormalization of MagE to MUSE. Ideally it
         has to be a small region close to `chi2_range`.
-    plot_range : (float, float)
+    plot_wvrange : (float, float)
         Wavelength range for plotting. Must be larger than either renorm_range or chi2_range.
     plot : bool
         Whether to plot the iterations for visual inspection
@@ -623,9 +623,10 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         newcube_name = master_dirname + '/' + name + '/magecube_from_muse_{}.fits'.format(name)
         magecube1 = magecube_orig  # MagE original
         magecube2 = Cube(newcube_name)  # from MUSE
-        chi2_s, chi2_f, fl_mage, fl_muse = compute_chi2_magecube(magecube1, magecube2, chi2_wvrange=chi2_range,
-                                                    renorm_wvrange=renorm_range,
-                                                    plot_wvrange=plot_range, plot=plot)
+        chi2_s, chi2_f, fl_mage, fl_muse = compute_chi2_magecubes(magecube1, magecube2,
+                                                    chi2_wvrange=chi2_wvrange,
+                                                    renorm_wvrange=renorm_wvrange,
+                                                    plot_wvrange=plot_wvrange, plot=plot)
 
         print("{}  [{}/{}]".format(name, jj + 1, len(tab)))
         print(" Total Chi2_spec/DOF = {:.1f}".format(chi2_s))
