@@ -398,7 +398,8 @@ def plot_specs_from_magecube(magecube, only_plot=None, **kwargs):
     plt.show()
 
 
-def compute_chi2_magecubes(magecube1, magecube2, chi2_wvrange, renorm_wvrange, plot_wvrange, plot=False):
+def compute_chi2_magecubes(magecube1, magecube2, chi2_wvrange, renorm_wvrange, plot_wvrange, plot=False,
+                           text1='musecube1', text2='musecube2'):
     """
     Computes a (renormalized) spectral Chi2 analysis spaxel per spaxel betweein magecube1 and magecube2.
     Computes a (normalized) total flux Chi2 analysis spaxel per spaxel between magecube1 and magecube2.
@@ -442,10 +443,12 @@ def compute_chi2_magecubes(magecube1, magecube2, chi2_wvrange, renorm_wvrange, p
     fl_mage2 = []
     if plot:
         # prepare the plot layout (1 panel top, ny panels bottom)
-        fig = plt.figure()
-        axes = fig.add_subplot(211)
-        axsb = [fig.add_subplot(2,ny,ny+ii+1) for ii in range(ny)]
-        axes += axsb
+        fig = plt.figure(figsize=(10,10))
+        axes = [fig.add_subplot(411)] # top panel
+        ax_2r = [fig.add_subplot(4,4,4+ii+1) for ii in range(4)]
+        ax_3r = [fig.add_subplot(4,4,8+ii+1) for ii in range(4)]
+        ax_4r = [fig.add_subplot(4,4,12+ii+1) for ii in range(3)]
+        axes = axes + ax_2r + ax_3r + ax_4r
 
     for ii in range(ny):
         sp1 = magecube1[:, ii, 0]  # Spectrum
@@ -472,19 +475,20 @@ def compute_chi2_magecubes(magecube1, magecube2, chi2_wvrange, renorm_wvrange, p
                     lw=3, alpha=0.25)
             # plot the data to compare
             ax.vlines(chi2_wvrange, ymin=0, ymax=10 * np.max(spec2.flux), color='r')  # plot the chi2 limits ranges
-            ntu.plot_two_spec(spec2, spec3, text1='MagE-2', text2='MagE-1 rebinned', ax=ax)
+            ntu.plot_two_spec(spec2, spec3, text1=text1, text2=text2, ax=ax)
 
         # compute chi2
-        chi2_aux = ntu.chi2_from_two_spec(spec2, spec3, wvrange=chi2_range)
+        chi2_aux = ntu.chi2_from_two_spec(spec2, spec3, wvrange=chi2_wvrange)
         chi2_spec += [chi2_aux]
 
         # also keep the total fluxes per spaxel
-        cond = (spec2.wavelength >= chi2_wvrange[0]) & (spec2.wavelength <= chi2_wvrange[1])
-        fl_mage1 += [np.nansum(spec3.flux[cond])]
+        cond = (spec2.wavelength.to('AA').value >= chi2_wvrange[0]) & (spec2.wavelength.to('AA').value <= chi2_wvrange[1])
         fl_mage2 += [np.nansum(spec2.flux[cond])]
+        cond = (spec1.wavelength.to('AA').value >= chi2_wvrange[0]) & (spec1.wavelength.to('AA').value <= chi2_wvrange[1])
+        fl_mage1 += [np.nansum(spec1.flux[cond])]
 
         if plot:
-            ax.title('Run:{}\nPos#{}, Chi2={:.1f}'.format(name, ii + 1, chi2_aux))
+            # ax.set_title('Pos#{}, Chi2_spec={:.1f}'.format(ii + 1, chi2_aux))
             ax.set_xlim(plot_wvrange[0], plot_wvrange[1])
 
     chi2_spec = np.array(chi2_spec)
@@ -493,14 +497,16 @@ def compute_chi2_magecubes(magecube1, magecube2, chi2_wvrange, renorm_wvrange, p
     fl_mage2 = np.array(fl_mage2)
     fl_mage1 = fl_mage1 / np.sum(fl_mage1)
     fl_mage2 = fl_mage2 / np.sum(fl_mage2)
-    chi2_flux = np.sum((fl_mage1 - fl_mage2) ** 2 / fl_mage2 ** 2) / ny
-
+    chi2_flux = np.sum((fl_mage1 - fl_mage2) ** 2 / fl_mage1**2)
+    # import pdb; pdb.set_trace()
     if plot:
         legend = axes[-1].get_legend()
         ax = axes[0]
-        ax.plot(fl_mage1, 'ko-', drawstyle='mid-steps')
-        ax.plot(fl_mage2, 'bo-', drawstyle='mid-steps')
+        ax.plot(fl_mage2, 'ko-', drawstyle='steps-mid')
+        ax.plot(fl_mage1, 'bo-', drawstyle='steps-mid')
+        ax.set_title('Chi2_flux={:.1f}, Chi2_spec={:.1f}'.format(chi2_flux, chi2_spec))
         ax.legend_ = legend
+        ax.legend()
 
     return chi2_spec, chi2_flux, fl_mage1, fl_mage2
 
@@ -626,7 +632,8 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         chi2_s, chi2_f, fl_mage, fl_muse = compute_chi2_magecubes(magecube1, magecube2,
                                                     chi2_wvrange=chi2_wvrange,
                                                     renorm_wvrange=renorm_wvrange,
-                                                    plot_wvrange=plot_wvrange, plot=plot)
+                                                    plot_wvrange=plot_wvrange, plot=plot,
+                                                    text1= 'MagE', text2='MUSE')
 
         print("{}  [{}/{}]".format(name, jj + 1, len(tab)))
         print(" Total Chi2_spec/DOF = {:.1f}".format(chi2_s))
@@ -635,6 +642,9 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         chi2_flux += [chi2_f]
         fl_mage_11 += [fl_mage]
         fl_muse_11 += [fl_muse]
+        if plot:
+            fig = plt.gcf()
+            fig.suptitle(name)
 
     tab['fl_muse_11'] = fl_muse_11
     tab['fl_mage_11'] = fl_mage_11
