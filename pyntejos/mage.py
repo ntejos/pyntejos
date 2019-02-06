@@ -581,7 +581,7 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         chi2_11 += [chi2_tot]
         fl_mage_11 += [fl_mage]
         fl_muse_11 += [fl_muse]
-        chi2_flux += [np.sum((fl_muse-fl_mage)**2 / fl_mage**2)/len(fl_mage)]
+        chi2_flux += [np.sum((fl_muse-fl_mage)**2 / fl_mage**2)]
 
     tab['chi2_spec'] = chi2
     tab['chi2w_spec'] = chi2w
