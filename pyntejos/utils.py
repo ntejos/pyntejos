@@ -450,7 +450,7 @@ def get_s2n(sp, wvrange=None):
     return s2n
 
 
-def plot_two_spec(sp1, sp2, text1='spec1', text2='spec2', renorm2=True, renorm_wvrange=None, verbose=False):
+def plot_two_spec(sp1, sp2, text1='spec1', text2='spec2', renorm2=True, renorm_wvrange=None, verbose=False, ax=None):
     """Plot two XSpectrum1D spectra for comparison purposes"""
 
     if renorm2:
@@ -462,13 +462,15 @@ def plot_two_spec(sp1, sp2, text1='spec1', text2='spec2', renorm2=True, renorm_w
     max2 = np.nanmax(sp2.flux*renorm)
     ymax = 1.1*np.max([max1,max2])
 
-    #main plot
-    plt.plot(sp1.wavelength, sp1.flux, 'k', drawstyle='steps-mid', label=text1)
-    plt.plot(sp1.wavelength, sp1.sig, 'g', drawstyle='steps-mid')
-    plt.plot(sp2.wavelength, renorm*sp2.flux, 'b', drawstyle='steps-mid', label=text2)
-    plt.plot(sp2.wavelength, renorm*sp2.sig, 'y', drawstyle='steps-mid')
-    plt.ylim(0, ymax)
-    plt.legend()
+    if ax is None:
+        ax = plt.gca()
+    # main plot
+    ax.plot(sp1.wavelength, sp1.flux, 'k', drawstyle='steps-mid', label=text1)
+    ax.plot(sp1.wavelength, sp1.sig, 'g', drawstyle='steps-mid')
+    ax.plot(sp2.wavelength, renorm*sp2.flux, 'b', drawstyle='steps-mid', label=text2)
+    ax.plot(sp2.wavelength, renorm*sp2.sig, 'y', drawstyle='steps-mid')
+    ax.set_ylim(0, ymax)
+    ax.legend()
     # print stats
     if verbose:
         print("<SN1> = {}".format(np.nanmedian(sp1.flux/sp1.sig)))

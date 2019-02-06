@@ -398,6 +398,113 @@ def plot_specs_from_magecube(magecube, only_plot=None, **kwargs):
     plt.show()
 
 
+def compute_chi2_magecube(magecube1, magecube2, chi2_wvrange, renorm_wvrange, plot_wvrange, plot=False):
+    """
+    Computes a (renormalized) spectral Chi2 analysis spaxel per spaxel betweein magecube1 and magecube2.
+    Computes a (normalized) total flux Chi2 analysis spaxel per spaxel between magecube1 and magecube2.
+
+    magecubes must have the same spatial shape (in xy pixels), but can have different WaveCoord
+    magecube1 is rebinned spectrally to match the WaveCoord of magecube2 within the chi2_wvrange
+
+
+    Parameters
+    ----------
+    magecube1 : mpdaf.obj.Cube
+        Magecube 1
+    magecube2 : mpdaf.obj.Cube
+        Magecube 2, must be of same shape as magecube1
+    chi2_wvrange : (float, float)
+        Wavelength range for performing the chi2 comparison. Ideally it has to be a small
+        region centred in a spectral feature (e.g. emission line)
+    renorm_wvrange : (float, float)
+        Wavelength range for performing the flux renormalization of MagE to MUSE. Ideally it
+        has to be a small region close to `chi2_range`.
+    plot_wvrange : (float, float)
+        Wavelength range for plotting. Must be larger than either renorm_range or chi2_range.
+    plot : bool
+        Whether to plot the iterations for visual inspection
+
+    chi2_range : (float, float)
+        Wavelenght range to perform chi2 computation
+
+    Returns
+    -------
+    chi2_spec, chi2_flux, flux_mage1, flux_mage2 : float, float, np.array(), np.array()
+
+    """
+
+    assert magecube2.shape[1:] == magecube1.shape[1:], 'magecube2 must have the same spatial shape as magecube1'
+    nw, ny, nx = magecube1.shape
+    assert nx == 1, 'Magecubes must have only 1 spaxel in the x-direction'
+
+    chi2_spec = []
+    fl_mage1 = []
+    fl_mage2 = []
+    if plot:
+        # prepare the plot layout (1 panel top, ny panels bottom)
+        fig = plt.figure()
+        axes = fig.add_subplot(211)
+        axsb = [fig.add_subplot(2,ny,ny+ii+1) for ii in range(ny)]
+        axes += axsb
+
+    for ii in range(ny):
+        sp1 = magecube1[:, ii, 0]  # Spectrum
+        sp2 = magecube2[:, ii, 0]  # Spectrum
+        # keep only region of interest
+        for sp in [sp1,sp2]:
+            sp.mask_region(lmin=plot_range[0], lmax=plot_range[1], inside=False)
+        # convert to XSpectrum1D objects
+        spec1 = ntu.xspectrum1d_from_mpdaf_spec(sp1)
+        spec2 = ntu.xspectrum1d_from_mpdaf_spec(sp2)
+        # rebin and renorm mage to muse
+        if spec1.wavelength != spec2.wavelength:
+            spec3 = spec1.rebin(spec2.wavelength, do_sig=True)  # rebin in case is necessary
+        else:
+            spec3 = spec1
+        renorm2 = ntu.renorm2_factor_from_wvrange(spec2, spec3, wvrange=renorm_wvrange)
+        spec3.data['flux'] = spec3.flux * renorm2
+        spec3.data['sig'] = spec3.sig * renorm2
+
+        # plot original MagE data in grey
+        if plot:
+            ax = axes[ii+1]
+            ax.plot(spec1.wavelength, renorm2*spec1.flux, drawstyle='steps-mid', c='gray', label='MagE-1 original',
+                    lw=3, alpha=0.25)
+            # plot the data to compare
+            ax.vlines(chi2_wvrange, ymin=0, ymax=10 * np.max(spec2.flux), color='r')  # plot the chi2 limits ranges
+            ntu.plot_two_spec(spec2, spec3, text1='MagE-2', text2='MagE-1 rebinned', ax=ax)
+
+        # compute chi2
+        chi2_aux = ntu.chi2_from_two_spec(spec2, spec3, wvrange=chi2_range)
+        chi2_spec += [chi2_aux]
+
+        # also keep the total fluxes per spaxel
+        cond = (spec2.wavelength >= chi2_wvrange[0]) & (spec2.wavelength <= chi2_wvrange[1])
+        fl_mage1 += [np.nansum(spec3.flux[cond])]
+        fl_mage2 += [np.nansum(spec2.flux[cond])]
+
+        if plot:
+            ax.title('Run:{}\nPos#{}, Chi2={:.1f}'.format(name, ii + 1, chi2_aux))
+            ax.set_xlim(plot_wvrange[0], plot_wvrange[1])
+
+    chi2_spec = np.array(chi2_spec)
+    chi2_spec = np.sum(chi2_spec) / ny
+    fl_mage1 = np.array(fl_mage1)
+    fl_mage2 = np.array(fl_mage2)
+    fl_mage1 = fl_mage1 / np.sum(fl_mage1)
+    fl_mage2 = fl_mage2 / np.sum(fl_mage2)
+    chi2_flux = np.sum((fl_mage1 - fl_mage2) ** 2 / fl_mage2 ** 2) / ny
+
+    if plot:
+        legend = axes[-1].get_legend()
+        ax = axes[0]
+        ax.plot(fl_mage1, 'ko-', drawstyle='mid-steps')
+        ax.plot(fl_mage2, 'bo-', drawstyle='mid-steps')
+        ax.legend_ = legend
+
+    return chi2_spec, chi2_flux, fl_mage1, fl_mage2
+
+
 def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc_array, PA_array,
                               chi2_range, renorm_range, plot_range, plot=True):
     """Utility for determining the best astrometry for a MagE Cube based on a comparisom
@@ -508,86 +615,29 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
     tab['PA'] = [float(name.split('-')[2].replace('p','.')) for name in tab['name']]
 
     # now read the cubes and perform the chi2
-    chi2 = []
-    chi2w = []
-    chi2_11 = []
+    chi2_spec = []
+    chi2_flux = []
     fl_mage_11 = []
     fl_muse_11 = []
-    chi2_flux = []
     for jj, name in enumerate(tab['name']):
         newcube_name = master_dirname + '/' + name + '/magecube_from_muse_{}.fits'.format(name)
-        # load the magecube
-        # import pdb; pdb.set_trace()
-        magecube_new = Cube(newcube_name)
-        nw, ny, nx = magecube_new.shape
+        magecube1 = magecube_orig  # MagE original
+        magecube2 = Cube(newcube_name)  # from MUSE
+        chi2_s, chi2_f, fl_mage, fl_muse = compute_chi2_magecube(magecube1, magecube2, chi2_wvrange=chi2_range,
+                                                    renorm_wvrange=renorm_range,
+                                                    plot_wvrange=plot_range, plot=plot)
 
-        chi2_tot = []
-        s2n_tot = []
-        fl_mage = []
-        fl_muse = []
-        for ii in range(ny):
-            sp1 = magecube_orig[:, ii, 0]  # MagE data
-            sp2 = magecube_new[:, ii, 0]  # MUSE data
-            # import pdb; pdb.set_trace()
-            # mask region of interest
-            sp1.mask_region(lmin=plot_range[0], lmax=plot_range[1], inside=False)
-            sp2.mask_region(lmin=plot_range[0], lmax=plot_range[1], inside=False)
-            # xspectrum1d objects
-            spec1 = ntu.xspectrum1d_from_mpdaf_spec(sp1)
-            spec2 = ntu.xspectrum1d_from_mpdaf_spec(sp2)
-            # rebin and renorm mage to muse
-            spec3 = spec1.rebin(spec2.wavelength, do_sig=True)  # MagE rebined to MUSE
-            renorm2 = ntu.renorm2_factor_from_wvrange(spec2, spec3, wvrange=renorm_range)
-            spec3.data['flux'] = spec3.flux * renorm2
-            spec3.data['sig'] = spec3.sig * renorm2
-
-            # plot original MagE data in grey
-            if plot:
-                plt.plot(spec1.wavelength, renorm2*spec1.flux, drawstyle='steps-mid', c='gray', label='MagE original', lw=3, alpha=0.25)
-                # plot the data to compare
-                plt.vlines(chi2_range, ymin=0, ymax=10*np.max(spec2.flux), color='r') # plot the chi2 limits ranges
-                ntu.plot_two_spec(spec2, spec3, text1='MUSE', text2='MagE')
-
-            # compute chi2
-            chi2_aux = ntu.chi2_from_two_spec(spec2,spec3, wvrange=chi2_range)
-            s2n_aux = ntu.get_s2n(spec2, wvrange=chi2_range)
-            chi2_tot += [chi2_aux]
-            s2n_tot += [s2n_aux]
-
-            # also store total fluxes per spaxel
-            fl_mage += [np.nansum(spec1.flux)]
-            fl_muse += [np.nansum(spec2.flux)]
-
-            if plot:
-                plt.title('Run:{}\nPos#{}, Chi2={:.1f}, s2n={:.0f}'.format(name,ii+1, chi2_aux, s2n_aux))
-                plt.legend()
-                plt.xlim(plot_range[0],plot_range[1])
-                plt.show()
-
-        chi2_tot = np.array(chi2_tot)
-        s2n_tot = np.array(s2n_tot)
-        fl_mage = np.array(fl_mage)
-        fl_muse = np.array(fl_muse)
-        fl_mage = fl_mage / np.sum(fl_mage)
-        fl_muse = fl_muse / np.sum(fl_muse)
-        chi2_w = chi2_tot * s2n_tot / np.sum(s2n_tot)
-        print("{}  [{}/{}]".format(name, jj+1, len(tab)))
-        print(chi2_tot)
-        print(chi2_w)
-        print(" Total Chi2/DOF = {:.1f}".format(np.sum(chi2_tot)/n))
-        print(" Weighted Chi2/DOF = {:.1f}".format(np.sum(chi2_w)))
-        chi2 += [np.sum(chi2_tot)/n]
-        chi2w += [np.sum(chi2_w)]
-        chi2_11 += [chi2_tot]
+        print("{}  [{}/{}]".format(name, jj + 1, len(tab)))
+        print(" Total Chi2_spec/DOF = {:.1f}".format(chi2_s))
+        print(" Total Chi2 flux/DOF = {:.1f}".format(chi2_f))
+        chi2_spec += [chi2_s]
+        chi2_flux += [chi2_f]
         fl_mage_11 += [fl_mage]
         fl_muse_11 += [fl_muse]
-        chi2_flux += [np.sum((fl_muse-fl_mage)**2 / fl_mage**2)]
 
-    tab['chi2_spec'] = chi2
-    tab['chi2w_spec'] = chi2w
-    tab['chi2_spec_11'] = chi2_11
     tab['fl_muse_11'] = fl_muse_11
     tab['fl_mage_11'] = fl_mage_11
+    tab['chi2_spec'] = chi2_spec
     tab['chi2_flux'] = chi2_flux
     return tab
 
