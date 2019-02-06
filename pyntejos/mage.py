@@ -513,7 +513,7 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
     chi2_11 = []
     fl_mage_11 = []
     fl_muse_11 = []
-    chi2_sp = []
+    chi2_flux = []
     for jj, name in enumerate(tab['name']):
         newcube_name = master_dirname + '/' + name + '/magecube_from_muse_{}.fits'.format(name)
         # load the magecube
