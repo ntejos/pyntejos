@@ -511,7 +511,7 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
     chi2 = []
     chi2w = []
     chi2_11 = []
-    for name in tab['name']:
+    for jj, name in enumerate(tab['name']):
         newcube_name = master_dirname + '/' + name + '/magecube_from_muse_{}.fits'.format(name)
         # load the magecube
         # import pdb; pdb.set_trace()
@@ -557,17 +557,16 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         chi2_tot = np.array(chi2_tot)
         s2n_tot = np.array(s2n_tot)
         chi2_w = chi2_tot * s2n_tot / np.sum(s2n_tot)
+        print("{}  [{}/{}]".format(name, jj+1, len(tab)))
         print(chi2_tot)
         print(chi2_w)
-        print("Total Chi2/DOF = {:.1f}".format(np.sum(chi2_tot)/n))
-        print("Weighted Chi2/DOF = {:.1f}".format(np.sum(chi2_w)))
+        print(" Total Chi2/DOF = {:.1f}".format(np.sum(chi2_tot)/n))
+        print(" Weighted Chi2/DOF = {:.1f}".format(np.sum(chi2_w)))
         chi2 += [np.sum(chi2_tot)/n]
         chi2w += [np.sum(chi2_w)]
         chi2_11 += [chi2_tot]
     tab['chi2'] = chi2
     tab['chi2w'] = chi2w
-    tab.write(master_dirname + '/astrometry_results.dat', format='ascii.fixed_width', overwrite=True)
     tab['chi2_11'] = chi2_11
-    tab.write(master_dirname + '/astrometry_results.fits', overwrite=True)
     return tab
 
