@@ -672,3 +672,36 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
     tab['chi2_flux'] = chi2_flux
     return tab
 
+
+def overwrite_magecube(cube, fl_arrays, sig_arrays):
+    """For a given magecube cube, it will rewrite the content of
+    flux and sigma arrays.
+
+    Parameters
+    ----------
+    cube: Cube
+        a cube with MagE data
+        11-positions, where position 1 is Southernmost   one when PA=0
+    fl_arrays : list of np.arrays()
+        List of 11 arrays containing the fluxes in each position
+        First element corresponds to the Northernmost one
+    sig_arrays : list of np.arrays()
+        List of 11 arrays containing the flux uncertainties in each position
+        First element corresponds to the Northernmost one
+
+    Returns
+    -------
+    newcube : Cube
+        The new overwritten cube
+
+    """
+    newcube = cube.copy()
+    assert len(fl_arrays) == 11, "The fl_arrays list must be of 11 elements, each one being a np.array()"
+    assert len(sig_arrays) == 11, "The sig_arrays list must be of 11 elements, each one being a np.array()"
+
+    nw, ny, nw = cube.shape
+    for ii in range(len(fl_arrays)):
+        yspaxel = ny - ii  # larger y will be the northern one
+        newcube.data.data[:,yspaxel - 1, 0] = np.array(fl_arrays[ii])
+        newcube.var.data[:, yspaxel - 1, 0] = np.array(sig_arrays[ii])**2  # this is variance
+    return newcube
