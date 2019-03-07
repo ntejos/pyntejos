@@ -67,15 +67,16 @@ def make_empty_cube(radec_center, pixscale, nside, wave_coord):
     crpix = (nside + 1, nside + 1)
     crval = radec_center[1].to('deg').value, radec_center[0].to('deg').value
     cdelt = pixscale.to('deg').value
+    dy, dx = cdelt, -1*cdelt  # dx is negative for convention East goes to negative x's
     # cd_matrix = np.zeros((2,2))
     # cd_matrix[0,0] = cdelt
     # cd_matrix[1,1] = cdelt
     deg_bool = True
     shape = (ntot, ntot)
-    wcs = WCS(crpix=crpix, crval=crval, cdelt=cdelt, deg=deg_bool, shape=shape)
+    wcs = WCS(crpix=crpix, crval=crval, cdelt=(dy, dx), deg=deg_bool, shape=shape)
     nw = wave_coord.shape  #
     data = np.zeros((nw, ntot, ntot))
-    cube = Cube(wcs=wcs, data=data, var=data,wave=wave_coord)
+    cube = Cube(wcs=wcs, data=data, var=data, wave=wave_coord)
     return cube
 
 
@@ -156,10 +157,10 @@ def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, arc_name='PSZ1GA311_G1', ve
 
     # Now determine the physical side as the original image to
     # use in the new one. De-lensing should make the real image smaller
-    dx, dy = cube_imag.wcs.get_axis_increments()
+    dy, dx = cube_imag.wcs.get_axis_increments() # note order (y,x)
     # import pdb; pdb.set_trace()
     assert np.fabs(dx) == np.fabs(dy), 'The cube has different increments for x and y. Not implemented for this.'
-    orig_pixscale = (dx*u.deg).to('arcsec')
+    orig_pixscale = (np.fabs(dx)*u.deg).to('arcsec')  # usually dx is negative
     factor = orig_pixscale.value / pixelscale.to('arcsec').value
     nside = int(factor*nx/2.)
 

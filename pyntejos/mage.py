@@ -16,6 +16,7 @@ from astropy.io.fits import HDUList, PrimaryHDU, ImageHDU
 from astropy.utils import isiterable
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from linetools.spectra.io import readspec
+from linetools.spectra.utils import collate
 import copy
 import json
 from pyntejos import utils as ntu
@@ -289,7 +290,9 @@ def make_MagE_cube_v2(config_file):
     print(comment.replace("Cube created", "MagE cube will be created"))
 
     dirname = params['directory_mage']
-    filenames = glob.glob(dirname+"/*_??.fits")
+    # filenames = glob.glob(dirname+"/*syn_??.fits")
+    filenames = glob.glob(dirname+"/*_bin_flux_??.fits")
+
     # sort them
     filenames.sort()
 
@@ -334,7 +337,8 @@ def make_MagE_cube_v2(config_file):
     print("Reading files from directory {} ordered as:".format(dirname))
     for ii,fname in enumerate(filenames):
         fn = fname.split('/')[-1]
-        print("\t {}: {}".format(ii + 1, fn))
+        yspaxel = ny - ii  # larger y will be the northern one
+        print("\t {}: {} --goes to--> spaxel (1,{})".format(ii + 1, fn, yspaxel))
         # MAKE SURE THE SPECTRA IS PROPERLY SORTED
         nfile = fn.split('.')[0].split('_')[-1]
         nfile = int(nfile)
@@ -344,15 +348,14 @@ def make_MagE_cube_v2(config_file):
             if 0: # dummy
                 spec.flux = 1
                 spec.sig = 0
-            data[:,ny-ii-1,0] = spec.flux.value  # position "01" is the most north, y increase to north
+            data[:,yspaxel-1,0] = spec.flux.value  # position "01" is the most north, y increase to north
             if np.isnan(spec.sig):
                 try:
-                    spec_sig = readspec(fname.replace('.fits','_sig.fits'))
+                    spec_sig = readspec(fname.replace('flux','sigm'))
                     spec.sig = spec_sig.flux.value
                 except:
                     spec.sig = 0
-            var[:,ny-ii-1,0] = (spec.sig.value)**2
-            # model[:,ii,0] = model_sp.flux.value
+            var[:,yspaxel-1,0] = (spec.sig.value)**2
         except:
             print("Something is wrong with spectrum {}".format(fname.split('/')[-1]))
             import pdb; pdb.set_trace()
@@ -396,6 +399,22 @@ def plot_specs_from_magecube(magecube, only_plot=None, **kwargs):
     plt.ylabel('Relative flux')
     plt.legend()
     plt.show()
+
+
+def write_magecube_as_xspectrum1d(magecube_filename):
+    magecube = Cube(magecube_filename)
+    nw, ny, nx = magecube.shape
+    assert nx == 1, "Your magecube does not have the conventional astrometry, where the slit is aligned in the y-axis"
+
+    spec_list = []
+    for ii in range(ny):
+        sp = magecube[:,ii-1,0]
+        spec = ntu.xspectrum1d_from_mpdaf_spec(sp)
+        spec_list += [spec]
+    specs = collate(spec_list)
+    new_name = magecube_filename.replace('.fits','_xspec.fits')
+    specs.write(new_name)
+    return specs
 
 
 def compute_chi2_magecubes(magecube1, magecube2, chi2_wvrange, renorm_wvrange, plot_wvrange, plot=False,
@@ -495,9 +514,10 @@ def compute_chi2_magecubes(magecube1, magecube2, chi2_wvrange, renorm_wvrange, p
     chi2_spec = np.sum(chi2_spec) / ny
     fl_mage1 = np.array(fl_mage1)
     fl_mage2 = np.array(fl_mage2)
-    fl_mage1 = fl_mage1 / np.sum(fl_mage1)
-    fl_mage2 = fl_mage2 / np.sum(fl_mage2)
-    chi2_flux = np.sum((fl_mage1 - fl_mage2) ** 2 / fl_mage1**2)
+    renorm2 = fl_mage1[0] / fl_mage2[0]
+    fl_mage1 = fl_mage1
+    fl_mage2 = fl_mage2 * renorm2
+    chi2_flux = np.sum((fl_mage1 - fl_mage2) ** 2 / fl_mage2**2)
     # import pdb; pdb.set_trace()
     if plot:
         legend = axes[-1].get_legend()

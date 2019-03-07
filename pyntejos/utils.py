@@ -263,7 +263,7 @@ def complist_from_igmgjson(igmguesses_json):
         A list of AbsComponents
 
     """
-    return ltiio.read_igmg_to_components(igmguesses_json)
+    return ltiio.read_igmg_to_components(igmguesses_json, linelist='ISM')
 
     # Read the JSON file
     with open(igmguesses_json) as data_file:
