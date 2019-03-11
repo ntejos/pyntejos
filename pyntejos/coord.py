@@ -6,6 +6,8 @@ import re,pdb
 import numpy as np
 from numpy import arccos,sin,cos
 from math import pi
+from astropy.coordinates import SkyCoord
+from astropy import units as u
 
 # constants
 DEG_PER_HR = 360. / 24.             # degrees per hour
@@ -423,7 +425,41 @@ def give_name(ra,dec):
     dec_s = dec_s.replace(' ','')[:5]
     name = 'J{}{}'.format(ra_s,dec_s)
     return name
- 
+
+def get_offsets(radec1, radec_ref):
+    if isinstance(radec1, SkyCoord):
+        pos1 = radec1
+    elif isinstance(radec1, (str, basestring)):
+        print('Assuming radec1 in hmsdms')
+        pos1 = SkyCoord(radec1, unit=(u.hourangle, u.deg))
+    elif isinstance(radec1, float):
+        print('Assuming radec1 in degrees')
+        pos1 = SkyCoord(radec1, unit=u.deg)
+    if isinstance(radec_ref, SkyCoord):
+        pos_ref = radec_ref
+    elif isinstance(radec1, (str, basestring)):
+        print('Assuming radec_ref in hmsdms')
+        pos_ref = SkyCoord(radec_ref, unit=(u.hourangle, u.deg))
+    elif isinstance(radec_ref, float):
+        print('Assuming radec_ref in degrees')
+        pos_ref = SkyCoord(radec_ref, unit=u.deg)
+
+    dra, ddec = pos_ref.spherical_offsets_to(pos1)
+    if dra < 0:
+        EW = 'W'
+    else:
+        EW = 'E'
+    if ddec < 0:
+        NS = 'S'
+    else:
+        NS = 'N'
+    print('pos1={}'.format(pos1))
+    print('pos_ref={}'.format(pos_ref))
+    print('pos1 is {:.2f}" to {} from pos_ref\npos1 is {:.2f}" to {} from pos_ref'.format(np.fabs(dra.to('arcsec').value), EW,
+                                                                                  np.fabs(ddec.to('arcsec').value), NS))
+    return dra, ddec
+
+
 
 def _test():
     import doctest

@@ -420,8 +420,8 @@ def write_magecube_as_xspectrum1d(magecube_filename):
 def compute_chi2_magecubes(magecube1, magecube2, chi2_wvrange, renorm_wvrange, plot_wvrange, plot=False,
                            text1='musecube1', text2='musecube2'):
     """
-    Computes a (renormalized) spectral Chi2 analysis spaxel per spaxel betweein magecube1 and magecube2.
-    Computes a (normalized) total flux Chi2 analysis spaxel per spaxel between magecube1 and magecube2.
+    Computes a (renormalized) spectral Chi2 analysis spaxel per spaxel between magecube1 and magecube2.
+    Computes a (renormalized) total flux Chi2 analysis spaxel per spaxel between magecube1 and magecube2.
 
     magecubes must have the same spatial shape (in xy pixels), but can have different WaveCoord
     magecube1 is rebinned spectrally to match the WaveCoord of magecube2 within the chi2_wvrange
@@ -531,14 +531,13 @@ def compute_chi2_magecubes(magecube1, magecube2, chi2_wvrange, renorm_wvrange, p
     return chi2_spec, chi2_flux, fl_mage1, fl_mage2
 
 
-def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc_array, PA_array,
+def determine_best_astrometry(magecube_filename, musecube_filename, xypa_tuples,
                               chi2_wvrange, renorm_wvrange, plot_wvrange, plot=True):
     """Utility for determining the best astrometry for a MagE Cube based on a comparisom
-    with a reference MUSE Cube. It will use different (xc, yc, PA) positions for a virtual MagE slit
-    on a MUSE reference datacube and will determine the set that has the minimum Chi2 within a
-    spectral region. It will return a astropy.table.Table object with the results.
-
-    [Warning: it may be time consuming scales as len(xc_array)*len(yc_array)*len(pa_array)]
+    with a reference MUSE Cube. It will use different (xc, yc, PA) positions taken from xypa_tuples
+    for a virtual MagE slit on a MUSE reference datacube and will determine the set that
+    has the minimum Chi2 within a spectral region. It will return a astropy.table.Table object
+    with the results.
 
     Parameters
     ----------
@@ -546,14 +545,10 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
         Filename of the MagE cube
     musecube_filename : str
         Filename of the MUSE reference cube
-    xc_array : 1-d np.array
-        Array with the different xc position to try for the MagE slit
-        In units of MUSE pixels
-    yc_array : 1-d np.array
-        Array with the different yc position to try for the MagE slit
-        In units of MUSE pixels
-    PA_array : 1-d np.array
-        Array with the different position angles (PA) to try for the MagE slit
+    xyc_tuples: list of tuples
+        List of (xc, yc, PA) tuples
+        xc and yc are in units of MUSE pixels and
+        PA is in the position angle in degrees
     chi2_wvrange : (float, float)
         Wavelength range for performing the chi2 comparison. Ideally it has to be a small
         region centred in a spectral feature (e.g. emission line)
@@ -579,7 +574,7 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
     magecube_orig = Cube(magecube_filename)
 
     # create master subdir
-    master_dirname = magecube_filename.replace('.fits', '_astrometry_runs')
+    master_dirname = magecube_filename.split('/')[-1].replace('.fits', '_astrometry_runs')
     if not os.path.exists(master_dirname):
         os.makedirs(master_dirname)
 
@@ -594,9 +589,10 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
 
     # will create auxiliary cubes from MUSE to match geometry of mage
     names = []
-    for xc in xc_array:
-        for yc in yc_array:
-            for pac in PA_array:
+    if 1:  # left only for the indentantion
+        if 1:  # left for the indentation
+            for tup in xypa_tuples:
+                xc, yc, pac = tup
                 rootname = '{:.1f}-{:.1f}-{:.1f}'.format(xc,yc,pac)
                 rootname = rootname.replace('.','p')
                 names += [rootname]
@@ -617,7 +613,7 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
                     print('Writing file: {}'.format(newcube_name))
                 # create the data structure
                 nw, ny, nx = magecube_orig.shape
-                nw = musecube.shape[0] # replace mw with that of muse datacube
+                nw = musecube.shape[0]  # replace mw with that of muse datacube
                 data = np.zeros(shape=(nw, ny, nx))
                 var = np.zeros_like(data)
 
@@ -627,6 +623,10 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
                     spec = musecube_pymuse.get_spec_from_ds9regfile(output, mode='sum', i=ii, frac=0.1, npix=0,
                                                           empirical_std=False, n_figure=None,
                                                             save=False, save_mask=False, plot=False)
+                    # pymuse gets spectrum in vacuum, thus we will convert to air
+                    # because the MUSEcube reduction is in air
+                    # does not seem important, but I leave this here for transparency
+                    spec.vactoair()
                     data[:, ny-ii-1, 0] = spec.flux
                     var[:, ny-ii-1, 0] = spec.sig**2
                     # import pdb; pdb.set_trace()
@@ -674,14 +674,14 @@ def determine_best_astrometry(magecube_filename, musecube_filename, xc_array, yc
 
 
 def overwrite_magecube(cube, fl_arrays, sig_arrays):
-    """For a given magecube cube, it will rewrite the content of
+    """For a given magecube cube, it will overwrite the content of
     flux and sigma arrays.
 
     Parameters
     ----------
     cube: Cube
         a cube with MagE data
-        11-positions, where position 1 is Southernmost   one when PA=0
+        11-positions, where position 1 is Southernmost one when PA=0
     fl_arrays : list of np.arrays()
         List of 11 arrays containing the fluxes in each position
         First element corresponds to the Northernmost one

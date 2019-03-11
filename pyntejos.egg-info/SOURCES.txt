@@ -4,6 +4,7 @@ pyntejos/__init__.py
 pyntejos/abslines.py
 pyntejos/catalogs.py
 pyntejos/coadd.py
+pyntejos/conicyt.py
 pyntejos/coord.py
 pyntejos/etcs.py
 pyntejos/fit.py
@@ -13,6 +14,7 @@ pyntejos/mage.py
 pyntejos/muse.py
 pyntejos/parse.py
 pyntejos/plots.py
+pyntejos/regions.py
 pyntejos/sampledist.py
 pyntejos/soneira_peebles.py
 pyntejos/spline.py
