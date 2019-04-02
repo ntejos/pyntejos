@@ -401,7 +401,7 @@ def plot_specs_from_magecube(magecube, only_plot=None, **kwargs):
     plt.show()
 
 
-def write_magecube_as_xspectrum1d(magecube_filename):
+def write_magecube_as_xspectrum1d(magecube_filename, airvac='air'):
     magecube = Cube(magecube_filename)
     nw, ny, nx = magecube.shape
     assert nx == 1, "Your magecube does not have the conventional astrometry, where the slit is aligned in the y-axis"
@@ -409,7 +409,7 @@ def write_magecube_as_xspectrum1d(magecube_filename):
     spec_list = []
     for ii in range(ny):
         sp = magecube[:,ii-1,0]
-        spec = ntu.xspectrum1d_from_mpdaf_spec(sp)
+        spec = ntu.xspectrum1d_from_mpdaf_spec(sp, airvac=airvac)
         spec_list += [spec]
     specs = collate(spec_list)
     new_name = magecube_filename.replace('.fits','_xspec.fits')

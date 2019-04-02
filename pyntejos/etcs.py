@@ -10,12 +10,15 @@ def data_path(filename):
     return os.path.join(data_dir, filename)
 
 
-def s2n_COS(t, FUV, tnorm=1000, v="26.1"):
+def s2n_COS(t, FUV, tnorm=1000, v="27.1"):
     # load cos etc simulations for flat spectrum 1000s exp, and FUV = 17 mag
     data_path('cos_etc_g130m_v26.1.csv')
     if v == '26.1':
         cos_g130m = ascii.read(data_path('cos_etc_g130m_v26.1.csv'))
         cos_g160m = ascii.read(data_path('cos_etc_g160m_v26.1.csv'))
+    elif v=='27.1':
+        cos_g130m = ascii.read(data_path('cos_etc_g130m_v27.1.csv'))
+        cos_g160m = ascii.read(data_path('cos_etc_g160m_v27.1.csv'))
     else:
         raise ValueError("The current version is not implemented or its out of date.")
 

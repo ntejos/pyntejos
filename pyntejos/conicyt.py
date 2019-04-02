@@ -42,7 +42,7 @@ def get_ci_factor(tab):
 def is_published(tab):
     """Returns boolean array on whether a paper has been published"""
     is_pub = []
-    nopub = ['prop','yCat', 'soft', 'conf', 'IAUS', '2018arXiv180305005P']
+    nopub = ['prop','yCat', 'soft', 'conf', 'IAUS', 'arXiv']
     for row in tab:
         bibcode = row['bibcode']
         q = 0

@@ -312,3 +312,5 @@ def read_publication_xml(filename):
     new_order = ['name', 'bibcode', 'year', 'citations', 'pubdate', '1author', 'authors', 'n_authors']
     tab = tab[new_order]
     return tab
+
+
