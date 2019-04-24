@@ -42,6 +42,6 @@ def s2n_COS(t, FUV, tnorm=1000, v="27.1"):
     sig = np.sqrt(var)
 
     #append S/N to cos
-    sn = signal/sig * np.sqrt(3) # per-resolution element of 3 pixels
+    sn = signal/sig * np.sqrt(6) # per-resolution element of 6 pixels
     cos['sn'] = sn
     return cos
