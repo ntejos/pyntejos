@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from mpdaf.obj import Image
 
@@ -21,7 +22,11 @@ def ima2abs(ra_deg, dec_deg, arc_name='PSZ1GA311_G1'):
     if arc_name == 'PSZ1GA311_G1':
         lensfactor = 0.4958 # depends on redshift
         alpha_scale = 8.33333333333333E-06  # scale in deflection matrix
-        prefix = '/media/ntejos/disk1/projects/arc_tomo/PSZ1GA311/data/delensing/'
+        path = os.getcwd()
+        if path.startswith('/disk03/ntejos/'):
+            prefix = '/disk03/ntejos/projects/arc_tomo/PSZ1GA311/data/delensing/'
+        else:
+            prefix = '/media/ntejos/disk1/projects/arc_tomo/PSZ1GA311/data/delensing/'
         alpha_x = lensfactor*Image(prefix + 'dplx1_Fel_wcs.fits')
         alpha_y = lensfactor*Image(prefix + 'dply1_Fel_wcs.fits')
     else:
