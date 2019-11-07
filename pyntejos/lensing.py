@@ -7,7 +7,18 @@ from mpdaf.obj import Image
 def ima2abs(ra_deg, dec_deg, arc_name='PSZ1GA311_G1'):
     """ Return de-lensed coordinate for a given arc
     using the corresponding deflection matrix.
-    (c) Sebita 2019"""
+    (c) Sebita 2019
+
+    Parameters
+    ----------
+
+    ra_deg
+    dec_deg
+
+    arc_name : str
+        currently available ['PSZ1GA311_G1', 'SGASJ1226_G1']
+
+    """
 
     # number of positions
     N = 1
