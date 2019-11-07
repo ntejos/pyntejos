@@ -21,7 +21,7 @@ def ima2abs(ra_deg, dec_deg, arc_name='PSZ1GA311_G1'):
     # lensfactor = d_ls/ds(z=0.73) / d_ls/ds(z=2.37)
     if arc_name == 'PSZ1GA311_G1':
         lensfactor = 0.4958 # depends on redshift
-        alpha_scale = 8.33333333333333E-06  # scale in deflection matrix
+        # alpha_scale = 8.33333333333333E-06  # scale in deflection matrix
         path = os.getcwd()
         if path.startswith('/disk03/ntejos/'):
             prefix = '/disk03/ntejos/projects/arc_tomo/PSZ1GA311/data/delensing/'
@@ -29,6 +29,17 @@ def ima2abs(ra_deg, dec_deg, arc_name='PSZ1GA311_G1'):
             prefix = '/media/ntejos/disk1/projects/arc_tomo/PSZ1GA311/data/delensing/'
         alpha_x = lensfactor*Image(prefix + 'dplx1_Fel_wcs.fits')
         alpha_y = lensfactor*Image(prefix + 'dply1_Fel_wcs.fits')
+
+    elif arc_name == 'SGASJ1226_G1':
+        path = os.getcwd()
+        if path.startswith('/disk03/ntejos/'):
+            prefix = '/disk03/ntejos/projects/arc_tomo/SGASJ1226/data/delensing/'
+        else:
+            prefix = '/media/ntejos/disk1/projects/arc_tomo/SGASJ1226/data/delensing/'
+        lensfactor = 1. # it is supposed to be included in the matrices
+        alpha_x = lensfactor * Image(prefix + 'dplx_0.77_abs.fits')
+        alpha_y = lensfactor * Image(prefix + 'dply_0.77_abs.fits')
+
     else:
         raise ValueError('Not implemented for that arc_name.')
 
