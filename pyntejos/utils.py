@@ -1,6 +1,7 @@
 from astropy.cosmology import WMAP7 as cosmo
 from astropy.constants import c as C
 from astropy import units as u
+from astropy.table import Table
 from astropy.io import ascii
 import numpy as np
 from linetools import utils as ltu
@@ -458,6 +459,8 @@ def plot_two_spec(sp1, sp2, text1='spec1', text2='spec2', renorm2=True, renorm_w
             renorm = renorm2
         else:
             renorm = renorm2_factor_from_wvrange(sp1, sp2, wvrange=renorm_wvrange)
+    else:
+        renorm = 1
     max1 = np.nanmax(sp1.flux)
     max2 = np.nanmax(sp2.flux*renorm)
     ymax = 1.1*np.max([max1,max2])
@@ -466,9 +469,11 @@ def plot_two_spec(sp1, sp2, text1='spec1', text2='spec2', renorm2=True, renorm_w
         ax = plt.gca()
     # main plot
     ax.plot(sp1.wavelength, sp1.flux, 'k', drawstyle='steps-mid', label=text1)
-    ax.plot(sp1.wavelength, sp1.sig, 'g', drawstyle='steps-mid')
+    if sp1.sig_is_set:
+        ax.plot(sp1.wavelength, sp1.sig, 'g', drawstyle='steps-mid')
     ax.plot(sp2.wavelength, renorm*sp2.flux, 'b', drawstyle='steps-mid', label=text2)
-    ax.plot(sp2.wavelength, renorm*sp2.sig, 'y', drawstyle='steps-mid')
+    if sp2.sig_is_set:
+        ax.plot(sp2.wavelength, renorm*sp2.sig, 'y', drawstyle='steps-mid')
     ax.set_ylim(0, ymax)
 
     # print stats
@@ -597,3 +602,89 @@ def chi2_from_two_spec(spec1,spec2, wvrange=None):
     chi2_dof = np.sum(chi2[cond])/len(chi2[cond])
     return chi2_dof
 
+
+def plot_mypython_catalog(image, catalog):
+    """From Sunil Simha"""
+    from astropy.io import fits
+    from photutils.aperture import EllipticalAperture
+
+
+    img, header = fits.getdata(image, header=True)
+    sources = Table.read(catalog)
+    fig, ax = plot_fits(img, header, figsize=(20, 20), show=False, cmap="Greys", fontsize=20)
+    ax.scatter(sources['x'], sources['y'], s=10, c='r')
+    for ID, x, y, a, b, theta in zip(sources['ID'], sources['x'], sources['y'],
+                                     sources['a'], sources['b'], sources['theta']):
+        plt.annotate(str(ID + 1), (x, y), color="b")
+        aper = EllipticalAperture((x, y), a, b, theta)
+        aper.plot(color="r", )
+    plt.show()
+
+
+def plot_fits(img, header, figsize=(10, 10),
+              fontsize=16, levels=(None, None),
+              lognorm=False, title=None, show=True,
+              cmap="viridis"):
+    """
+    Show a fits image. (c) Sunil Sumha's code
+    Parameters
+    ----------
+    img: np.ndarray
+        Image data
+    header: fits.header.Header
+        Fits image header
+    figsize: tuple of ints, optional
+        Size of figure to be displayed (x,y)
+    levels: tuple of floats, optional
+        Minimum and maximum pixel values
+        for visualisation.
+    lognorm: bool, optional
+        If true, the visualisation is log
+        stretched.
+    title: str, optional
+        Title of the image
+    show: bool, optional
+        If true, displays the image.
+        Else, returns the fig, ax
+    cmap: str or pyplot cmap, optional
+        Defaults to viridis
+
+    Returns
+    -------
+    None if show is False. fig, ax if True
+    """
+    from astropy.wcs import WCS
+    from astropy.stats import sigma_clipped_stats
+    from astropy import visualization as vis
+
+    plt.rcParams['font.size'] = fontsize
+    wcs = WCS(header)
+
+    _, median, sigma = sigma_clipped_stats(img)
+
+    assert len(levels) == 2, "Invalid levels. Use this format: (vmin,vmax)"
+    vmin, vmax = levels
+
+    if vmin is None:
+        vmin = median
+    if vmax is not None:
+        if vmin > vmax:
+            vmin = vmax - 10 * sigma
+            warnings.warn("levels changed to ({:f},{:f}) because input vmin waz greater than vmax".format(vmin, vmax))
+    else:
+        vmax = median + 10 * sigma
+
+    fig = plt.figure(figsize=figsize)
+    ax = plt.subplot(projection=wcs)
+
+    if lognorm:
+        ax.imshow(img, vmax=vmax, vmin=vmin, norm=vis.ImageNormalize(stretch=vis.LogStretch()), cmap=cmap)
+    else:
+        ax.imshow(img, vmax=vmax, vmin=vmin, cmap=cmap)
+    ax.set_xlabel("RA")
+    ax.set_ylabel("Dec")
+    ax.set_title(title)
+    if show:
+        plt.show()
+    else:
+        return fig, ax

@@ -324,7 +324,7 @@ def get_redshift_qso(ra,dec,tol=2.):
 
 def is_in_ref(ra, dec, ref_ra, ref_dec, tol=2.):
     """
-    Wether a given ra, dec is within tol from a any source ina reference sample.
+    Wether a given ra, dec is within tol from a any source in a reference sample.
 
     Returns a boolean array
 

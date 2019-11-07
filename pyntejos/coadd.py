@@ -6,13 +6,13 @@ from linetools.spectra.io import readspec
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from linetools.spectra.utils import collate
 import numpy as np
-from pypit import arcoadd as arco
+from pypeit.core import coadd as arco
 from astropy import units as u
 
 """Main module for co-addition of 1-d spectra"""
 
 
-def coadd_stis_from_x1dfiles(filenames, wv_array=None, rebin=None, debug=False):
+def coadd_stis_from_x1dfiles_old(filenames, wv_array=None, rebin=None, debug=False):
     """
 
     Parameters
@@ -55,6 +55,55 @@ def coadd_stis_from_x1dfiles(filenames, wv_array=None, rebin=None, debug=False):
 
     # coaddition
     spec1d = arco.one_d_coadd(specs, weights)
+    return spec1d
+
+
+def coadd_stis_from_x1dfiles(filenames, wv_array=None, rebin=None, debug=True):
+    """
+
+    Parameters
+    ----------
+    filenames : list
+        List of filenames with x1d STIS data
+        Must be of the same object and same
+        configuration
+    wv_array : Quantity array
+        Wavelength array to perform the co-add
+    rebin : int, optional
+        If given, it rebins the current sampling by
+        rebin number of pixels
+
+    Returns
+    -------
+    spec1d : XSpectrum1D
+        Co-added version of all the spectra
+    """
+
+    spec_list = []
+    for filename in filenames:
+        aux = load_single_x1d_stis(filename, debug=debug)
+        for sp in aux:
+            spec_list += [sp]
+    # spec_list contains all echelle orders from different files and multi-extensions
+    specs = collate(spec_list)  # now all in a single XSpectrum1D object
+
+    if wv_array is None:
+        # bring them to a unique native wavelength grid using PYPIT
+        cat_wave = arco.new_wave_grid(specs.data['wave'], wave_method='velocity')
+    else:
+        cat_wave = wv_array.to('AA').value
+    if rebin is not None:
+        rebin = int(rebin)
+        cat_wave = cat_wave[::rebin]
+    specs = specs.rebin(cat_wave*u.AA, all=True, do_sig=True, masking='none',grow_bad_sig=True)
+
+    # estimate weights for coaddition (PYPYT)
+    sn2, weights = arco.sn_weight(specs, smask=None)
+
+    # coaddition
+    spec1d = arco.one_d_coadd(specs,None, weights)
+
+    # spec1d = arco.coadd_spectra(specs, wave_grid_method='velocity', scale_method='auto')
     return spec1d
 
 

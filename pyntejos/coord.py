@@ -206,7 +206,7 @@ def match_radec(ra1, dec1, ra2, dec2, tol, allmatches=False):
 
     Note to get the indices of objects in ra2, dec2 without a match, use
 
-    imatch = match(ra1, dec1, ra2, dec2, 2.)
+    imatch = match_radec(ra1, dec1, ra2, dec2, 2.)
     inomatch = numpy.setdiff1d(np.arange(len(ra2)), set(imatch))
 
     doctests:
@@ -280,6 +280,7 @@ def match_radec(ra1, dec1, ra2, dec2, tol, allmatches=False):
         # return both indices and separations in a recarray
         temp = np.rec.fromrecords(match, names='ind,sep')
         # change to arcseconds
+        import pdb; pdb.set_trace()
         temp.sep *= 3600.
         temp.sep[temp.sep < 0] = -1.
         return temp
@@ -295,7 +296,7 @@ def indmatch(ra1, dec1, ra2, dec2, tol):
     matches, and i2 are the indices into ra2, dec2 giving the matching
     objects.
     """
-    m = match(ra1, dec1, ra2, dec2, tol)
+    m = match_radec(ra1, dec1, ra2, dec2, tol)
     c = m.ind > -1
     i1 = c.nonzero()[0]
     i2 = m.ind[c]
@@ -326,7 +327,7 @@ def unique_radec(ra, dec, tol):
     >>> np.allclose(iunique, iknown)
     >>> np.allclose(iextra, extraknown)
     """
-    matches = match(ra, dec, ra, dec, tol, allmatches=True)
+    matches = match_radec(ra, dec, ra, dec, tol, allmatches=True)
     imatchflat = []
     for m in matches:
         imatchflat.extend(m.ind)

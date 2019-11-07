@@ -13,6 +13,7 @@ pyntejos/lensing.py
 pyntejos/mage.py
 pyntejos/muse.py
 pyntejos/parse.py
+pyntejos/parse_churchill2001.py
 pyntejos/plots.py
 pyntejos/regions.py
 pyntejos/sampledist.py

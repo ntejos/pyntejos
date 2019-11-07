@@ -178,6 +178,7 @@ def write_DS9reg(x, y, filename=None, coord='IMAGE', ptype='x', size=20,
     ----------
     x, y : arrays of floats, shape (N,)
         The coordinates. These may be image or WCS.
+        Please make sure to update the coord keyword accordingly.
     filename : str, optional
         A filename to write to.
     coord : str  (`IMAGE` or `J2000`)
