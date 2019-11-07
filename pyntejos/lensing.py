@@ -47,7 +47,7 @@ def ima2abs(ra_deg, dec_deg, arc_name='PSZ1GA311_G1'):
             prefix = '/disk03/ntejos/projects/arc_tomo/SGASJ1226/data/delensing/'
         else:
             prefix = '/media/ntejos/disk1/projects/arc_tomo/SGASJ1226/data/delensing/'
-        lensfactor = 1. # it is supposed to be included in the matrices
+        lensfactor = 1.  # it is supposed to be included in the matrices
         alpha_x = lensfactor * Image(prefix + 'dplx_0.77_abs.fits')
         alpha_y = lensfactor * Image(prefix + 'dply_0.77_abs.fits')
 

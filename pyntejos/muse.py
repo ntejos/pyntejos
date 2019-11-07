@@ -162,7 +162,7 @@ def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False, verbose=False
                 print(s)
             if inspect:
                 spec.plot(title=s)
-                cont.plot(color='r', drawstyle='line')
+                cont.plot(color='r', drawstyle='solid')
                 plt.show()
             spec_n = spec.copy()
             spec_n.data = spec.data - cont.data.data
