@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
+from astropy.coordinates import SkyCoord
 from mpdaf.obj import Image, Cube, WCS, WaveCoord
 
 
@@ -156,7 +157,14 @@ def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False, verbose=False
             if np.alltrue(cube.mask[:,j,i]) == True:
                 continue
             spec = cube[:,j,i]
-            cont = spec.poly_spec(order, nsig=nsig)
+            cond = spec.data == 0.
+            if np.sum(cond) == len(cond):  # empty data, just continue
+                cube_new[:, j, i] = spec
+                continue
+            try:
+                cont = spec.poly_spec(order, nsig=nsig)
+            except:
+                import pdb; pdb.set_trace()
             s = 'Spaxel ({},{}) [{}/{}]'.format(i,j,q,ntot)
             if verbose:
                 print(s)
@@ -212,9 +220,14 @@ def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, arc_name='PSZ1GA311_G1', ve
             dec, ra = cube_imag.wcs.pix2sky((y, x))[0]
             ra_new, dec_new = ima2abs(ra, dec, arc_name=arc_name)
             if verbose:
+                pos1 = SkyCoord(ra,dec, unit='deg')
+                pos2 = SkyCoord(ra_new, dec_new, unit='deg')
+                sep = pos1.separation(pos2)
+                sep_ra, sep_dec = pos1.spherical_offsets_to(pos2)
+
                 print('Spaxel ({},{}) [{}/{}]'.format(x, y, q, ntot))
-                print("  ra:  {:.6f} --> {:.6f}".format(ra, ra_new))
-                print("  dec: {:.6f} --> {:.6f}".format(dec, dec_new))
+                print("  ra:  {:.6f} --> {:.6f} (Delta={:.1f}arcsec)".format(ra, ra_new, sep_ra.arcsec))
+                print("  dec: {:.6f} --> {:.6f} (Delta={:.1f}arcsec)".format(dec, dec_new, sep_dec.arcsec))
             ra_abs += [ra_new]
             dec_abs += [dec_new]
             spec_aux = cube_imag[:, y, x]  # check order (y,x)

@@ -54,14 +54,32 @@ def ima2abs(ra_deg, dec_deg, arc_name='PSZ1GA311_G1'):
     else:
         raise ValueError('Not implemented for that arc_name.')
 
+
     # coordinates in pixels of alpha matrix
     xpix,ypix = [0]*N,[0]*N
-    for i in range(1):
+    for i in range(N):
         xpix[i]=alpha_x.wcs.sky2pix((ydeg[i],xdeg[i]),nearest=True)[0] [1]
-        ypix[i]=alpha_x.wcs.sky2pix((ydeg[i],xdeg[i]),nearest=True)[0] [0]
-
+        ypix[i]=alpha_y.wcs.sky2pix((ydeg[i],xdeg[i]),nearest=True)[0] [0]
+        # print("Pixel (x,y)=({},{})".format(xpix[i],ypix[i]))
+    # import pdb;    pdb.set_trace()
     # map to absorber plane (using the alpha matrix)
     xdeg_l = xdeg + alpha_x[ypix,xpix].data/3600./np.cos(np.deg2rad(ydeg))
-    ydeg_l = ydeg - alpha_y[ypix,xpix].data/3600.
+    ydeg_l = ydeg + alpha_y[ypix,xpix].data/3600.
 
-    return (xdeg_l[i],ydeg_l[i])
+    return (xdeg_l[i], ydeg_l[i])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
