@@ -47,7 +47,7 @@ def ima2abs(ra_deg, dec_deg, arc_name='PSZ1GA311_G1'):
             prefix = '/disk03/ntejos/projects/arc_tomo/SGASJ1226/data/delensing/'
         else:
             prefix = '/media/ntejos/disk1/projects/arc_tomo/SGASJ1226/data/delensing/'
-        lensfactor = 1.  # it is supposed to be included in the matrices
+        lensfactor = 1.  # it is supposed to be included in the matrices in this case
         alpha_x = lensfactor * Image(prefix + 'dplx_0.77_abs.fits')
         alpha_y = lensfactor * Image(prefix + 'dply_0.77_abs.fits')
 
@@ -64,7 +64,7 @@ def ima2abs(ra_deg, dec_deg, arc_name='PSZ1GA311_G1'):
     # import pdb;    pdb.set_trace()
     # map to absorber plane (using the alpha matrix)
     xdeg_l = xdeg + alpha_x[ypix,xpix].data/3600./np.cos(np.deg2rad(ydeg))
-    ydeg_l = ydeg + alpha_y[ypix,xpix].data/3600.
+    ydeg_l = ydeg - alpha_y[ypix,xpix].data/3600.
 
     return (xdeg_l[i], ydeg_l[i])
 

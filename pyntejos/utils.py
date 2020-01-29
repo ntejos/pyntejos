@@ -688,3 +688,25 @@ def plot_fits(img, header, figsize=(10, 10),
         plt.show()
     else:
         return fig, ax
+
+def image2cube(image):
+    """
+
+    Parameters
+    ----------
+    image : mpdaf.obj.Image
+        Input image object
+
+    Returns
+    -------
+    cube : mpdaf.obj.Cube
+        A cube version of the input image.
+
+    """
+    from mpdaf.obj import Cube, Image, WaveCoord
+
+    # get the wcs
+    wcs = image.wcs
+    # create dummy WaveCoord
+    wv_coord = WaveCoord(shape=1)
+

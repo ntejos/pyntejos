@@ -34,7 +34,7 @@ def get_subcube(inp, xy_center, nside, wv_range=None):
         cube = Cube(inp)
     else:
         cube = inp
-    yx_center = (xy_center[1], xy_center[0]) # note that center in pmdaf is given as (y,x)
+    yx_center = (xy_center[1], xy_center[0]) # note that center in mpdaf is given as (y,x)
     unit_center = None # to be interpreted as pixels
     subcube = cube.subcube(yx_center, 2*nside+1, lbda=wv_range,
                            unit_center=unit_center,
@@ -82,7 +82,7 @@ def masked_cube(inp, mask, value=0., method='value'):
 
 
 
-def make_empty_cube(radec_center, pixscale, nside, wave_coord):
+def make_empty_cube(radec_center, pixscale, nside, wave_coord, wcs=None):
     """Makes a new datacube with different WCS and 2*nside+1
     pixels per side
 
@@ -96,6 +96,8 @@ def make_empty_cube(radec_center, pixscale, nside, wave_coord):
         Number of pixels at each side of the central one
     wave_coord : mpdaf.obj.WaveCoord
         The WaveCoord object of the new datacube
+    wcs : mpdaf.obj.WCS ; optional
+        If given, it will overwrite radec_center, pixscale, nside
 
     Returns
     -------
@@ -103,20 +105,27 @@ def make_empty_cube(radec_center, pixscale, nside, wave_coord):
         Cube object filled with zeros
 
     """
-    ntot = 2 * nside + 1 # total side always odd
-    crpix = (nside + 1, nside + 1)
-    crval = radec_center[1].to('deg').value, radec_center[0].to('deg').value
-    cdelt = pixscale.to('deg').value
-    dy, dx = cdelt, -1*cdelt  # dx is negative for convention East goes to negative x's
-    # cd_matrix = np.zeros((2,2))
-    # cd_matrix[0,0] = cdelt
-    # cd_matrix[1,1] = cdelt
-    deg_bool = True
-    shape = (ntot, ntot)
-    wcs = WCS(crpix=crpix, crval=crval, cdelt=(dy, dx), deg=deg_bool, shape=shape)
+    if wcs is None:
+        ntot = 2 * nside + 1 # total side always odd
+        ny, nx = ntot, ntot
+        crpix = (nside + 1, nside + 1)
+        crval = radec_center[1].to('deg').value, radec_center[0].to('deg').value
+        cdelt = pixscale.to('deg').value
+        dy, dx = cdelt, -1*cdelt  # dx is negative for convention East goes to negative x's
+        # cd_matrix = np.zeros((2,2))
+        # cd_matrix[0,0] = cdelt
+        # cd_matrix[1,1] = cdelt
+        deg_bool = True
+        shape = (ny, nx)
+        wcs_new = WCS(crpix=crpix, crval=crval, cdelt=(dy, dx), deg=deg_bool, shape=shape)
+    else:
+        wcs_new = wcs
+        nx = wcs.naxis1
+        ny = wcs.naxis2
+
     nw = wave_coord.shape  #
-    data = np.zeros((nw, ntot, ntot))
-    cube = Cube(wcs=wcs, data=data, var=data, wave=wave_coord)
+    data = np.zeros((nw, ny, nx))
+    cube = Cube(wcs=wcs_new, data=data, var=data, wave=wave_coord)
     return cube
 
 
@@ -206,7 +215,8 @@ def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, arc_name='PSZ1GA311_G1', ve
     # use in the new one. De-lensing should make the real image smaller
     dy, dx = cube_imag.wcs.get_axis_increments() # note order (y,x)
     # import pdb; pdb.set_trace()
-    assert np.fabs(dx) == np.fabs(dy), 'The cube has different increments for x and y. Not implemented for this.'
+    assert np.allclose(np.fabs(dx), np.fabs(dy), rtol=1e-05, atol=1e-08, equal_nan=False),\
+        'The cube has different increments for x and y. Not implemented for this.'
     orig_pixscale = (np.fabs(dx)*u.deg).to('arcsec')  # usually dx is negative
     factor = orig_pixscale.value / pixelscale.to('arcsec').value
     nside = int(factor*nx/2.)
@@ -222,7 +232,7 @@ def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, arc_name='PSZ1GA311_G1', ve
             if verbose:
                 pos1 = SkyCoord(ra,dec, unit='deg')
                 pos2 = SkyCoord(ra_new, dec_new, unit='deg')
-                sep = pos1.separation(pos2)
+                # sep = pos1.separation(pos2)
                 sep_ra, sep_dec = pos1.spherical_offsets_to(pos2)
 
                 print('Spaxel ({},{}) [{}/{}]'.format(x, y, q, ntot))
