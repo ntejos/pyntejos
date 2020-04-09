@@ -1,6 +1,7 @@
 from barak.io import readtxt
 import numpy as np
 from astropy.table import Table, Column
+from astropy.io import ascii
 
 def read_Danforth14(filename,keywords=['RA_TARG','DEC_TARG']):
     """Reads the special format of Danforth+14 on IGM ('igm-systems'
@@ -315,3 +316,19 @@ def read_publication_xml(filename):
     return tab
 
 
+def table_from_marzfile(marzfile):
+    """
+	Reads a MARZ file .mz and returns an astropy.table.Table
+
+	Parameters
+	----------
+	mzfile : str
+		file.mz to open
+
+	Returns
+	-------
+	tab : astropy.table.Table()
+
+	"""
+    tab = ascii.read(marzfile, format='csv', header_start=2)
+    return tab

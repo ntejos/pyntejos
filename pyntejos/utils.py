@@ -10,6 +10,7 @@ from linetools.spectra.io import readspec
 from linetools.spectra.xspectrum1d import XSpectrum1D
 import linetools.isgm.io as ltiio
 from linetools.isgm import utils as ltiu
+from pyntejos.io import table_from_marzfile
 
 import json
 import glob
@@ -709,4 +710,45 @@ def image2cube(image):
     wcs = image.wcs
     # create dummy WaveCoord
     wv_coord = WaveCoord(shape=1)
+
+
+def compare_2_marzfiles(marzfile1,marzfile2):
+    """Compare 2 MARZ files and print the main differences"""
+
+    mz1 = table_from_marzfile(marzfile1)
+    mz2 = table_from_marzfile(marzfile2)
+    assert len(mz1) == len(mz2), 'The input files have different lengths!'
+
+    cond_QOP = [mz1['QOP'][ii] != mz2['QOP'][ii] for ii in range(len(mz1))]
+    cond_z = [mz1['FinZ'][ii] != mz2['FinZ'][ii] for ii in range(len(mz1))]
+    cond_tem = [mz1['FinTID'][ii] != mz2['FinTID'][ii] for ii in range(len(mz1))]
+    cond_dif = np.array(cond_QOP) | np.array(cond_z) | np.array(cond_tem)
+
+    if np.sum(cond_dif)==0:
+        print('No differences were found.')
+        return
+
+    print('The following differences were found:')
+    for ii in range(len(mz1)):
+        z1 = mz1['FinZ'][ii]
+        z2 = mz2['FinZ'][ii]
+        tem1 = mz1['FinTID'][ii]
+        tem2 = mz2['FinTID'][ii]
+        QOP1 = mz1['QOP'][ii]
+        QOP2 = mz2['QOP'][ii]
+        com1 = mz1['Comment'][ii]
+        com2 = mz2['Comment'][ii]
+
+        # skip unknowns
+        if (QOP1 == 1) and (QOP2 == 1):
+            continue
+
+        if cond_dif[ii]:
+            print(mz1['#ID'][ii], z1, z2, tem1, tem2, QOP1, QOP2)
+        else:
+            pass
+        if (com1):
+            print('  Comment1: ', com1)
+        if (com2):
+            print('  Comment2: ', com2)
 
