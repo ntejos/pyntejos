@@ -199,7 +199,7 @@ def make_MagE_cube_old(config_file):
     print(comment.replace("Cube created", "MagE cube will be created"))
 
     dirname = params['directory_mage']
-    filenames = glob.glob(dirname+"/*_??.fits")
+    filenames = glob.glob(dirname+"/*_flux_??.fits")
     # sort them
     filenames.sort()
 
@@ -219,27 +219,35 @@ def make_MagE_cube_old(config_file):
         nfile = fn.split('.')[0].split('_')[-1]
         nfile = int(nfile)
         assert nfile == ii + 1, "The files in the directory are not sorted properly. Please check."
+
+        yspaxel = ny - ii -1  # larger y will be the northern one
+
         try:
             spec = readspec(fname)
             if 0: # dummy
                 spec.flux = 1
                 spec.sig = 0
-            cube[:,0,ny-ii-1] = spec.flux.value
-            if np.isnan(spec.sig):
-                try:
-                    spec_sig = readspec(fname.replace('.fits','_sig.fits'))
-                    spec.sig = spec_sig.flux.value
-                except:
-                    spec.sig = 0
-            stat[:,0,ny-ii-1] = (spec.sig.value)**2
-            # model[:,ii,0] = model_sp.flux.value
 
-            if 0: # dummy
-                spec.flux = 1
-                spec.sig = 0
-            cube[:,0,ny-ii-1] = spec.flux.value
-            stat[:,0,ny-ii-1] = (spec.sig.value)**2
+            if spec.sig_is_set:
+                flux_aux = spec.flux.value
+                sigm_aux = spec.sig.value
+            else:  # get the sigma values from another file
+                try:
+                    # import pdb; pdb.set_trace()
+                    sigma_file = fname.replace('flux', 'sigm')
+                    spec_sig = readspec(sigma_file)
+                    spec.sig = spec_sig.flux
+                except:
+                    print("No sigma spectrum was found in the directory with the right name: {}".format(sigma_file))
+                    spec.sig = 0
+                flux_aux = spec.flux.value
+                sigm_aux = spec.sig.value
+
+            cube[:, yspaxel, 0] = flux_aux
+            stat[:, yspaxel, 0] = (sigm_aux)**2
+
             # model[:,ii,0] = model_sp.flux.value
+            print("Reading {}, storing it into y={}".format(fname, yspaxel))
         except:
             print("Something is wrong with spectrum {}".format(fname.split('/')[-1]))
             import pdb; pdb.set_trace()
@@ -263,7 +271,7 @@ def make_MagE_cube_old(config_file):
     print('Wrote file: {}'.format(params['output_cube']))
 
 
-def make_MagE_cube_v2(config_file, format='txt'):
+def make_MagE_cube_v2(config_file, format='fits'):
     """A new version to create the MagE cubes, it uses MPDAF objects.
     It works for .fits 1-d spectra files stored in a directory with a specific
     format. In particular:
@@ -304,29 +312,35 @@ def make_MagE_cube_v2(config_file, format='txt'):
     print(comment.replace("Cube created", "MagE cube will be created"))
 
     dirname = params['directory_mage']
+    rootname = params['rootname']
     # filenames = glob.glob(dirname+"/*syn_??.fits")
+    print('rootname: ' + rootname)
     if format == 'txt':
-        rootname = params["rootname"]
-        print('rootname: '+rootname)
+        # import pdb; pdb.set_trace()
         filenames = glob.glob(dirname+"/{}_??.txt".format(rootname))
+        print('This format is deprecated. Please use .fits instead.')
         # print(filenames)
     elif format == 'fits':
-        raise NotImplementedError("Not properly implemented. It's almost there but depends on the file structures.")
+        filenames = glob.glob(dirname + "/{}_flux_??.fits".format(rootname))
+    else:
+        raise ValueError('Only implemented for .txt or .fits files.')
+
     if len(filenames) == 0:
         raise ValueError("No files found matching the rootname: {}".format(rootname))
 
     # sort them
     filenames.sort()
 
-    # create the new datacube structure
-    # spec_ref = readspec(filenames[0])
+
+    # the structure must be consistent with that specified by the user in the config file
     nw, ny, nx = params['NAXIS3'], params['NAXIS2'], params['NAXIS1']
 
     # get wavecoord
     # hdr = spec_ref.header
     # hdr['CUNIT1'] = 'Angstrom'
+
     crpix = params['CRPIX3']
-    cdelt = params['CD3_3']
+    cdelt = params['CDELT3']
     crval = params['CRVAL3']
     wave = WaveCoord(hdr=None, crpix=crpix, cdelt=cdelt, crval=crval, cunit=u.AA, ctype='LINEAR', shape=None)
     # wave = WaveCoord(hdr=hdr)
@@ -364,30 +378,37 @@ def make_MagE_cube_v2(config_file, format='txt'):
     for ii,fname in enumerate(filenames):
         fn = fname.split('/')[-1]
         yspaxel = ny - ii  # larger y will be the northern one
-        print("\t {}: {} --goes to--> spaxel (1,{})".format(ii + 1, fn, yspaxel))
+        print("\t {}: {} --goes to--> spaxel (1,{}) ; i.e. y_python={}".format(ii + 1, fn, yspaxel, yspaxel - 1))
         # MAKE SURE THE SPECTRA IS PROPERLY SORTED
         nfile = fn.split('.')[0].split('_')[-1]
         nfile = int(nfile)
         assert nfile == ii + 1, "The files in the directory are not sorted properly. Please check."
 
         if format=='fits':
-            try:
-                spec = readspec(fname)
-                if 0: # dummy
-                    spec.flux = 1
+            spec = readspec(fname)
+            if 0:  # dummy
+                spec.flux = 1
+                spec.sig = 0
+
+            if spec.sig_is_set:
+                flux_aux = spec.flux.value
+                sigm_aux = spec.sig.value
+            else:  # get the sigma values from another file
+                try:
+                    # import pdb; pdb.set_trace()
+                    sigma_file = fname.replace('flux', 'sigm')
+                    spec_sig = readspec(sigma_file)
+                    spec.sig = spec_sig.flux
+                except:
+                    print("No sigma spectrum was found in the directory with the right name: {}".format(sigma_file))
                     spec.sig = 0
-                data[:,yspaxel-1,0] = spec.flux.value  # position "01" is the most north, y increase to north
-                if np.isnan(spec.sig):
-                    try:
-                        spec_sig = readspec(fname.replace('flux','sigm'))
-                        spec.sig = spec_sig.flux.value
-                    except:
-                        spec.sig = 0
-                var[:,yspaxel-1,0] = (spec.sig.value)**2
-            except:
-                print("Something is wrong with spectrum {}".format(fname.split('/')[-1]))
-                import pdb; pdb.set_trace()
-                raise ValueError("Something is wrong with spectrum {}".format(fname.split('/')[-1]))
+                flux_aux = spec.flux.value
+                sigm_aux = spec.sig.value
+
+            data[:, yspaxel-1, 0] = flux_aux
+            var[:, yspaxel-1, 0] = (sigm_aux) ** 2
+            print("Reading {}, storing it into y={}".format(fname, yspaxel-1))
+
         elif format=='txt':
             spec = read_single_mage_file(fname)
             data[:, yspaxel - 1, 0] = spec.flux
@@ -442,7 +463,7 @@ def write_magecube_as_xspectrum1d(magecube_filename, airvac='air'):
 
     spec_list = []
     for ii in range(ny):
-        sp = magecube[:,ii-1,0]
+        sp = magecube[:, ii, 0]
         spec = ntu.xspectrum1d_from_mpdaf_spec(sp, airvac=airvac)
         spec_list += [spec]
     specs = collate(spec_list)
