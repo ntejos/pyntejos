@@ -180,8 +180,11 @@ def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False, verbose=False
             if inspect:
                 spec.plot(title=s)
                 cont.plot(color='r', linestyle='solid')
-                while input("Do You Want To Continue? [y/n]") == "y":
-                    continue
+                answer = input("Do you want to continue? [y/n]: ")
+                if answer in ["y", "Y", 'yes']:
+                    pass
+                else:
+                    raise RuntimeError('You decided not to continue.')
 
                 plt.show()
             spec_n = spec.copy()
