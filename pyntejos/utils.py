@@ -563,14 +563,17 @@ def get_flux_wvrange(spec, wvrange, flux_units = u.erg/u.cm/u.cm/u.s/u.AA, subst
 
 
 def xspectrum1d_from_mpdaf_spec(sp, airvac='air'):
-    """Gets a XSpectrum1D object in vacuum from an MPDAF Spectrum"""
+    """Gets a XSpectrum1D object in vacuum from an MPDAF Spectrum
+    It does not take into account whether the wv is in air or vac anymore
+    """
     nomask = ~sp.mask
     fl = sp.data[nomask]
     er = np.sqrt(sp.var[nomask])
     wv = sp.wave.coord()[nomask]
     meta = dict(airvac=airvac)
     spec = XSpectrum1D.from_tuple((wv, fl, er), meta=meta)
-    spec.airtovac()
+    #spec.airtovac()
+    # print("\t Hola!!!!!!!!!!!!!!1")
     spec2 = XSpectrum1D.from_tuple((spec.wavelength, fl, er))
     return spec2
 

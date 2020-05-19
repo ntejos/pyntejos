@@ -140,6 +140,7 @@ def create_ref_hdulist(reference_muse_file, reference_mage_file, params):
 
 def write_config_make_MagE_cube_dummy(filename):
     """Dumps a dummy configuration file for mage.make_MagE_cube()"""
+    # todo: need to update the dummy config file!
     text ="""
 {
     "directory_mage" : "Directory of the MagE data for a single slit with format and naming convention of S. Lopez",
@@ -271,25 +272,32 @@ def make_MagE_cube_old(config_file):
     print('Wrote file: {}'.format(params['output_cube']))
 
 
-def make_MagE_cube_v2(config_file, format='fits'):
+def make_MagE_cube_v2(config_file, format='txt'):
     """A new version to create the MagE cubes, it uses MPDAF objects.
     It works for .fits 1-d spectra files stored in a directory with a specific
     format. In particular:
 
     XXX_yyy_??.txt
+        Where XXX -> Name of object
+        yyy -> ['flx', 'nor', syn']
+        ?? -> ['01', '02', ..., '11']
 
-    Errors are looked for in the same directory with *_sig.fits extension
+    Each individual file must contain its error array
 
 
     Parameters
     ----------
     config_file : str
         Configuration file with important parameters. See mage.dump_config_make_MagE_cube()
+        for an example
     format : str
-        Either 'fits' of 'txt'
+        Only '.txt' format is allowed. The convention is set by N.Tejos and S.Lopez
+    northernmost_ypixel : str
+        What is the Northernmost spaxel, either '11' or '1'
 
     Returns:
-        Cube fits files associated to each "XX_yyy"
+        Cube fits files associated to each "XX_yyy" object
+        It writes the .fits to disk
 
     """
 
@@ -320,17 +328,19 @@ def make_MagE_cube_v2(config_file, format='fits'):
         filenames = glob.glob(dirname+"/{}_??.txt".format(rootname))
         print('This format is deprecated. Please use .fits instead.')
         # print(filenames)
-    elif format == 'fits':
-        filenames = glob.glob(dirname + "/{}_flux_??.fits".format(rootname))
+
+    #elif format == 'fits':
+    #    filenames = glob.glob(dirname + "/{}_flux_??.fits".format(rootname))
+
     else:
-        raise ValueError('Only implemented for .txt or .fits files.')
+        #raise ValueError('Only implemented for .txt or .fits files.')
+        raise ValueError('Only implemented for .txt files (with a special format convention).')
 
     if len(filenames) == 0:
         raise ValueError("No files found matching the rootname: {}".format(rootname))
 
     # sort them
     filenames.sort()
-
 
     # the structure must be consistent with that specified by the user in the config file
     nw, ny, nx = params['NAXIS3'], params['NAXIS2'], params['NAXIS1']
@@ -350,10 +360,11 @@ def make_MagE_cube_v2(config_file, format='fits'):
     cdelt_yx = params['PIXSCALE_Y'], -1*params['PIXSCALE_X']  # ditto (negative to decrease towards east)
     PA = params['POS_ANGLE']
     if PA == "None": # get angle from MagE reference header
-        print("No PA given in parameter file. Reding PA from MagE reference .fits header")
+        print("No PA given in parameter file. Reading PA from MagE reference .fits header")
         hdulist_mage = fits.open(params['reference_mage'])
         PA = hdulist_mage[0].header['ROTANGLE'] - 44.5  # this is the current offset in angle
-        print("PA={}deg".format(PA))
+        print("\tPA={}deg".format(PA))
+
     shape = (ny, nx)
     wcs = WCS(crpix=crpix_yx, crval=crval_decra, cdelt=cdelt_yx, deg=True, shape=shape, rot=-1*PA)  # for some reason negative PA works
     # redefine wcs to have CD matrix rather than PC matrix
@@ -375,15 +386,23 @@ def make_MagE_cube_v2(config_file, format='fits'):
 
     # read the files and fill the data cubes (cube and variance)
     print("Reading files from directory {} ordered as:".format(dirname))
+    print('Northernmost position is {}'.format(params['northernmost_position']))
     for ii,fname in enumerate(filenames):
         fn = fname.split('/')[-1]
-        yspaxel = ny - ii  # larger y will be the northern one
+        if params['northernmost_position'] == '11':
+            yspaxel = ny - ii  # larger y will be the northern one
+        elif params['northernmost_position'] == '01':
+            yspaxel = ii + 1
+        else:
+            raise ValueError('`northernmost_position` must be either `11` or `01` (str) in the configuration file.')
+
         print("\t {}: {} --goes to--> spaxel (1,{}) ; i.e. y_python={}".format(ii + 1, fn, yspaxel, yspaxel - 1))
         # MAKE SURE THE SPECTRA IS PROPERLY SORTED
         nfile = fn.split('.')[0].split('_')[-1]
         nfile = int(nfile)
         assert nfile == ii + 1, "The files in the directory are not sorted properly. Please check."
 
+        '''
         if format=='fits':
             spec = readspec(fname)
             if 0:  # dummy
@@ -408,8 +427,9 @@ def make_MagE_cube_v2(config_file, format='fits'):
             data[:, yspaxel-1, 0] = flux_aux
             var[:, yspaxel-1, 0] = (sigm_aux) ** 2
             print("Reading {}, storing it into y={}".format(fname, yspaxel-1))
+        '''
 
-        elif format=='txt':
+        if format=='txt':
             spec = read_single_mage_file(fname)
             data[:, yspaxel - 1, 0] = spec.flux
             var[:, yspaxel - 1, 0] = (spec.sig)**2

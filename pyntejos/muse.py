@@ -180,6 +180,9 @@ def get_nocont_cube(cube, order=1, nsig=(-2.0,2.0), inspect=False, verbose=False
             if inspect:
                 spec.plot(title=s)
                 cont.plot(color='r', linestyle='solid')
+                while input("Do You Want To Continue? [y/n]") == "y":
+                    continue
+
                 plt.show()
             spec_n = spec.copy()
             spec_n.data = spec.data - cont.data.data
@@ -205,7 +208,9 @@ def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, arc_name='PSZ1GA311_G1', ve
         Cube resampled into the absorber plane
 
     """
-    from pyntejos.lensing import ima2abs
+    from arctomo.lensing import cube_ima2abs
+    return cube_ima2abs(cube_imag, pixelscale=pixelscale, arc_name=arc_name, verbose=verbose)
+
 
     # first loop for establishing the new radec range
     nw, ny, nx = cube_imag.shape
@@ -273,6 +278,7 @@ def cube_ima2abs(cube_imag, pixelscale=0.2*u.arcsec, arc_name='PSZ1GA311_G1', ve
     # crop cube
     cube_abs.crop()
     return cube_abs, counter
+
 
 def extend_cube(cube, floor=0., stddev=0.1):
     """Extends a given cube by adding pixels around the original cube filled with zeros or
