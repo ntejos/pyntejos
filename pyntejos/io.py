@@ -1,4 +1,4 @@
-from barak.io import readtxt
+
 import numpy as np
 from astropy.table import Table, Column
 from astropy.io import ascii
@@ -104,6 +104,9 @@ def read_Danforth14(filename,keywords=['RA_TARG','DEC_TARG']):
 0.088340 37.0  1323.04 "Lya 1215"   0.088340 6.5    7.0    105    46     36.6   6.0    13.36  0.16   0  1  0 
 0.094355 37.0  1330.35 "Lya 1215"   0.094355 9.6    8.0    124    28     29.8   3.1    13.47  0.09   1  1  0 
 """
+    # import convinience
+    from barak.io import readtxt
+
     #open file
     f = open(filename)
     
